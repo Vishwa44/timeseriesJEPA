@@ -99,11 +99,7 @@ class PatchTST_backbone(nn.Module):
                  verbose:bool=False, embedding_model:bool=False,**kwargs):
         
         super().__init__()
-        
-        # RevIn
-        self.revin = revin
-        if self.revin: self.revin_layer = RevIN(c_in, affine=affine, subtract_last=subtract_last)
-        
+                
         # Patching
         self.patch_len = patch_len
         self.stride = stride
@@ -139,12 +135,6 @@ class PatchTST_backbone(nn.Module):
         
 
     def forward(self, z, masks):                                                                   # z: [bs x nvars x seq_len]
-        # norm
-        if self.revin: 
-            z = z.permute(0,2,1)
-            z = self.revin_layer(z, 'norm')
-            z = z.permute(0,2,1)
-            
         # do patching
         if self.padding_patch == 'end':
             z = self.padding_patch_layer(z)
@@ -155,12 +145,7 @@ class PatchTST_backbone(nn.Module):
         z = self.backbone(z, masks)                                                                # z: [bs x nvars x d_model x patch_num]
         if not self.embedding_model:
             z = self.head(z)                                                                    # z: [bs x nvars x target_window] 
-            
-            # denorm
-            if self.revin: 
-                z = z.permute(0,2,1)
-                z = self.revin_layer(z, 'denorm')
-                z = z.permute(0,2,1)
+
         return z
     
     def create_pretrain_head(self, head_nf, vars, dropout):
