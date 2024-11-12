@@ -2,8 +2,8 @@ from data_provider.data_factory import data_provider
 from data_provider.mask_collator import TimeSeriesMaskCollator
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
-from model.PatchTST_encoder import PatachTST_embedding
-from model.PatchTST_predictor import PatachTST_predictor
+from model.PatchTST_encoder import PatchTST_embedding
+from model.PatchTST_predictor import PatchTST_predictor
 from model.PatchTST_finetune import PatchTST_finetune
 from data_provider.mask_utils import apply_masks
 
@@ -17,14 +17,19 @@ import time
 import copy
 import os
 import time
+from pathlib import Path
 
 from tqdm import tqdm
 def _get_data(args, flag, collator=None):
         data_set, data_loader = data_provider(args, flag, collator)
         return data_set, data_loader
 
-def pretrain(args, device):
+def pretrain(args, setting, device):
     
+    path = os.path.join(args.checkpoints, setting)
+    if not os.path.exists(path):
+            os.makedirs(path)
+
     mask_collator = TimeSeriesMaskCollator(
             seq_len=args.seq_len,
             pred_len=args.pred_len,
@@ -39,8 +44,8 @@ def pretrain(args, device):
 
     train_data, train_loader = _get_data(args, flag='train', collator=mask_collator)
 
-    encoder = PatachTST_embedding(args).float().to(device)
-    predictor = PatachTST_predictor(args).float().to(device)
+    encoder = PatchTST_embedding(args).float().to(device)
+    predictor = PatchTST_predictor(args).float().to(device)
 
     target_encoder = copy.deepcopy(encoder)
     model_parameters = filter(lambda p: p.requires_grad, encoder.parameters())
@@ -86,7 +91,20 @@ def pretrain(args, device):
                                                 epochs = args.train_epochs,
                                                 max_lr = args.learning_rate)
 
-    for epoch in range(args.train_epochs):
+    start_epoch = 0
+    best_loss = float('inf')
+    if (path / 'latest_checkpoint_pretrain.pt').exists():
+        checkpoint = torch.load(path / 'latest_checkpoint_pretrain.pt')
+        encoder.load_state_dict(checkpoint['encoder_state_dict'])
+        predictor.load_state_dict(checkpoint['predictor_state_dict'])
+        target_encoder.load_state_dict(checkpoint['target_encoder_state_dict'])
+        model_optim.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        start_epoch = checkpoint['epoch']
+        best_loss = checkpoint['best_loss']
+        print(f"Loaded checkpoint from epoch {start_epoch}")
+
+    for epoch in range(start_epoch, args.pretrain_epochs):
         print("Epoch number: ", epoch)
         iter_count = 0
         train_loss = []
@@ -134,10 +152,43 @@ def pretrain(args, device):
 
                 return float(loss)
             loss = train_step()
-        train_loss.append(loss)
+            train_loss.append(loss)
+        epoch_loss = np.average(train_loss)
+        
+
+        if epoch_loss < best_loss:
+            best_loss = epoch_loss
+            # Save best model
+            best_model_path = path / 'best_model_pretrain.pt'
+            torch.save({
+                'epoch': epoch,
+                'encoder_state_dict': encoder.state_dict(),
+                'predictor_state_dict': predictor.state_dict(),
+                'target_encoder_state_dict': target_encoder.state_dict(),
+                'optimizer_state_dict': model_optim.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'loss': epoch_loss,
+                'best_loss': best_loss,
+                'args': args
+            }, best_model_path)
+
+            print(f"Saved best model with loss {best_loss:.7f} to {best_model_path}")
         adjust_learning_rate(model_optim, scheduler, epoch + 1, args)       
         train_loss = np.average(train_loss)
         print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f}".format(
             epoch + 1, train_steps, train_loss))
         
+        checkpoint_path = path / 'latest_checkpoint_pretrain.pt'
+        torch.save({
+            'epoch': epoch,
+            'encoder_state_dict': encoder.state_dict(),
+            'predictor_state_dict': predictor.state_dict(),
+            'target_encoder_state_dict': target_encoder.state_dict(),
+            'optimizer_state_dict': model_optim.state_dict(),
+            'scheduler_state_dict': scheduler.state_dict(),
+            'loss': epoch_loss,
+            'best_loss': best_loss,
+            'args': args
+        }, checkpoint_path)
+        print(f"Saved latest checkpoint to {checkpoint_path}")
     return encoder

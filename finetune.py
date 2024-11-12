@@ -65,12 +65,10 @@ def vali(args, model, device, vali_data, vali_loader, criterion):
     model.train()
     return model, total_loss
 
-def finetune(args, model, device):
+def finetune(args, model, setting, device):
     train_data, train_loader = _get_data(args, flag='train')
     vali_data, vali_loader = _get_data(args, flag='val')
     test_data, test_loader = _get_data(args, flag='test')
-
-
 
     time_now = time.time()
 
@@ -96,7 +94,7 @@ def finetune(args, model, device):
     else:
         scheduler = None
 
-    for epoch in range(args.train_epochs):
+    for epoch in range(args.finetune_epochs):
         print("Epoch number: ", epoch)
         iter_count = 0
         train_loss = []
