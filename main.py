@@ -18,7 +18,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretraining', type=bool, default=1, help='pretrining')
     parser.add_argument('--finetuning', type=bool, default=1, help='pretrining')
     parser.add_argument('--config_path', required=True, type=str, help='config yaml file path')
-    parser.add_argument('--encoder_path', required=True, type=str, help='encoder file path')
+    # parser.add_argument('--encoder_path', required=True, type=str, help='encoder file path')
     parser.add_argument('--pred_len', type=int, default=96, help='prediction length')
     p_args = parser.parse_args()
 

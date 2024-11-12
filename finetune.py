@@ -66,6 +66,9 @@ def vali(args, model, device, vali_data, vali_loader, criterion):
     return model, total_loss
 
 def finetune(args, model, setting, device):
+    
+    path = os.path.join(args.checkpoints, setting)
+
     train_data, train_loader = _get_data(args, flag='train')
     vali_data, vali_loader = _get_data(args, flag='val')
     test_data, test_loader = _get_data(args, flag='test')
@@ -93,6 +96,8 @@ def finetune(args, model, setting, device):
                                             max_lr = args.learning_rate)
     else:
         scheduler = None
+   
+    best_vali_loss = float('inf')
 
     for epoch in range(args.finetune_epochs):
         print("Epoch number: ", epoch)
@@ -144,6 +149,20 @@ def finetune(args, model, setting, device):
         train_loss = np.average(train_loss)
         model, vali_loss = vali(args, model, device, vali_data, vali_loader, criterion)
         model, test_loss = vali(args, model, device, test_data, test_loader, criterion)
+        
+        if vali_loss < best_vali_loss:
+            best_vali_loss = vali_loss
+            # Save best model
+            best_model_path = path / 'best_model_finetuned_'+str(args.pred_len)+'.pt'
+            torch.save({
+                'epoch': epoch,
+                'encoder_state_dict': model.state_dict(),
+                'optimizer_state_dict': model_optim.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'train loss': train_loss,
+                'vali_loss': vali_loss,
+                'test_loss': test_loss,
+            }, best_model_path)
 
         print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
             epoch + 1, train_steps, train_loss, vali_loss, test_loss))
