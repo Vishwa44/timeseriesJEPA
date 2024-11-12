@@ -118,19 +118,7 @@ class PatchTST_backbone(nn.Module):
 
         # embedding model
         self.embedding_model = embedding_model
-        
-        if not embedding_model:
-            # Head
-            self.head_nf = d_model * patch_num
-            self.n_vars = c_in
-            self.pretrain_head = pretrain_head
-            self.head_type = head_type
-            self.individual = individual
 
-            if self.pretrain_head: 
-                self.head = self.create_pretrain_head(self.head_nf, c_in, fc_dropout) # custom head passed as a partial func with all its kwargs
-            elif head_type == 'flatten': 
-                self.head = Flatten_Head(self.individual, self.n_vars, self.head_nf, target_window, head_dropout=head_dropout)
         
         
 
@@ -143,8 +131,6 @@ class PatchTST_backbone(nn.Module):
         
         # model
         z = self.backbone(z, masks)                                                                # z: [bs x nvars x d_model x patch_num]
-        if not self.embedding_model:
-            z = self.head(z)                                                                    # z: [bs x nvars x target_window] 
 
         return z
     
