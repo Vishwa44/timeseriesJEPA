@@ -1,10 +1,10 @@
-# ETTm1 PatchTST Configuration YAML
+# ETTm2 PatchTST Configuration YAML
 
 model_type: "PatchTST"
 model: "PatchTST"
-data: "ETTm1"
+data: "ETTm2"
 root_path: "D:\\Coursework\\MTS\\dataset\\ETT-small"
-data_path: "ETTm1.csv"
+data_path: "ETTm2.csv"
 features: "M"
 target: "OT"
 freq: "h"
