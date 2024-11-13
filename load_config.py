@@ -42,8 +42,6 @@ class Config:
     factor: int
     distil: bool
     dropout: float
-    fusion_dropout: float
-    proj_dropout: float
     embed: str
     activation: str
     output_attention: bool
@@ -96,7 +94,7 @@ def load_config(config_path: str, pred_len: Optional[int] = None, model_id: str 
     config_dict['model_id'] = model_id
 
     args = Config(**config_dict)
-    setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
+    setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}'.format(
                 args.model_id,
                 args.model,
                 args.data,
@@ -113,5 +111,5 @@ def load_config(config_path: str, pred_len: Optional[int] = None, model_id: str 
                 args.embed,
                 args.distil,
                 args.des)
-    
+    print("----"+setting+"----")
     return args, setting

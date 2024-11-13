@@ -6,6 +6,7 @@ import numpy as np
 from pretraining import pretrain
 from finetune import finetune
 from load_config import load_config
+from model.PatchTST_finetune import PatchTST_finetune
 from model.PatchTST_encoder import PatchTST_embedding
 
 
@@ -36,20 +37,23 @@ if __name__ == '__main__':
 
     args, setting = load_config(p_args.config_path, p_args.pred_len, p_args.model_id)
     
-    enc = None
     if p_args.pretraining:
-        enc = pretrain(args, setting, device)
+        pretrain(args, setting, device)
     
     torch.cuda.empty_cache()
 
     if p_args.finetuning:
         path = os.path.join(args.checkpoints, setting,'best_model_pretrain.pt')
-        if path.exists() and enc is None:
+        if os.path.exists(path):
             checkpoint = torch.load(path)
             enc = PatchTST_embedding(args).float().to(device)
             enc.load_state_dict(checkpoint['encoder_state_dict'])
+            for param in enc.parameters():
+                param.requires_grad = False
+
+            model = PatchTST_finetune(args, enc).float().to(device)
         else:
             raise Exception("Load encoder path")
-        finetune(args, enc, setting, device)
+        finetune(args, model, setting, device)
 
     

@@ -82,19 +82,21 @@ def pretrain(args, setting, device):
     for p in target_encoder.parameters():
         p.requires_grad = False
 
-    momentum_scheduler = (args.ema[0] + i*(args.ema[1]-args.ema[0])/(train_steps*args.train_epochs*args.train_scale)
-                            for i in range(int(train_steps*args.train_epochs*args.train_scale)+1))
+    momentum_scheduler = (args.ema[0] + i*(args.ema[1]-args.ema[0])/(train_steps*args.pretrain_epochs*args.train_scale)
+                            for i in range(int(train_steps*args.pretrain_epochs*args.train_scale)+1))
 
     scheduler = lr_scheduler.OneCycleLR(optimizer = model_optim,
                                                 steps_per_epoch = train_steps,
                                                 pct_start = args.pct_start,
-                                                epochs = args.train_epochs,
+                                                epochs = args.pretrain_epochs,
                                                 max_lr = args.learning_rate)
 
     start_epoch = 0
     best_loss = float('inf')
-    if (path / 'latest_checkpoint_pretrain.pt').exists():
-        checkpoint = torch.load(path / 'latest_checkpoint_pretrain.pt')
+    latest_checkpoint_pretrain_path = os.path.join(path, 'latest_checkpoint_pretrain.pt')
+    best_checkpoint_pretrain_path = os.path.join(path, 'best_model_pretrain.pt')
+    if os.path.exists(latest_checkpoint_pretrain_path):
+        checkpoint = torch.load(latest_checkpoint_pretrain_path)
         encoder.load_state_dict(checkpoint['encoder_state_dict'])
         predictor.load_state_dict(checkpoint['predictor_state_dict'])
         target_encoder.load_state_dict(checkpoint['target_encoder_state_dict'])
@@ -159,7 +161,6 @@ def pretrain(args, setting, device):
         if epoch_loss < best_loss:
             best_loss = epoch_loss
             # Save best model
-            best_model_path = path / 'best_model_pretrain.pt'
             torch.save({
                 'epoch': epoch,
                 'encoder_state_dict': encoder.state_dict(),
@@ -170,15 +171,15 @@ def pretrain(args, setting, device):
                 'loss': epoch_loss,
                 'best_loss': best_loss,
                 'args': args
-            }, best_model_path)
+            }, best_checkpoint_pretrain_path)
 
-            print(f"Saved best model with loss {best_loss:.7f} to {best_model_path}")
+            print(f"Saved best model with loss {best_loss:.7f} to {best_checkpoint_pretrain_path}")
         adjust_learning_rate(model_optim, scheduler, epoch + 1, args)       
         train_loss = np.average(train_loss)
         print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f}".format(
             epoch + 1, train_steps, train_loss))
         
-        checkpoint_path = path / 'latest_checkpoint_pretrain.pt'
+        
         torch.save({
             'epoch': epoch,
             'encoder_state_dict': encoder.state_dict(),
@@ -189,6 +190,5 @@ def pretrain(args, setting, device):
             'loss': epoch_loss,
             'best_loss': best_loss,
             'args': args
-        }, checkpoint_path)
-        print(f"Saved latest checkpoint to {checkpoint_path}")
-    return encoder
+        }, latest_checkpoint_pretrain_path)
+        print(f"Saved latest checkpoint to {latest_checkpoint_pretrain_path}")

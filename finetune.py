@@ -2,8 +2,8 @@ from data_provider.data_factory import data_provider
 from data_provider.mask_collator import TimeSeriesMaskCollator
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
-from model.PatchTST_encoder import PatachTST_embedding
-from model.PatchTST_predictor import PatachTST_predictor
+from model.PatchTST_encoder import PatchTST_embedding
+from model.PatchTST_predictor import PatchTST_predictor
 from model.PatchTST_finetune import PatchTST_finetune
 from data_provider.mask_utils import apply_masks
 
@@ -92,13 +92,13 @@ def finetune(args, model, setting, device):
         scheduler = lr_scheduler.OneCycleLR(optimizer = model_optim,
                                             steps_per_epoch = train_steps,
                                             pct_start = args.pct_start,
-                                            epochs = args.train_epochs,
+                                            epochs = args.finetune_epochs,
                                             max_lr = args.learning_rate)
     else:
         scheduler = None
    
     best_vali_loss = float('inf')
-
+    best_checkpoint_pretrain_path = os.path.join(path, 'best_model_finetue_pred_len_'+str(args.pred_len)+'.pt')
     for epoch in range(args.finetune_epochs):
         print("Epoch number: ", epoch)
         iter_count = 0
@@ -153,7 +153,6 @@ def finetune(args, model, setting, device):
         if vali_loss < best_vali_loss:
             best_vali_loss = vali_loss
             # Save best model
-            best_model_path = path / 'best_model_finetuned_'+str(args.pred_len)+'.pt'
             torch.save({
                 'epoch': epoch,
                 'encoder_state_dict': model.state_dict(),
@@ -162,7 +161,7 @@ def finetune(args, model, setting, device):
                 'train loss': train_loss,
                 'vali_loss': vali_loss,
                 'test_loss': test_loss,
-            }, best_model_path)
+            }, best_checkpoint_pretrain_path)
 
         print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
             epoch + 1, train_steps, train_loss, vali_loss, test_loss))
