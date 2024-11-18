@@ -3,7 +3,7 @@
 model_type: "PatchTST"
 model: "PatchTST"
 data: "ETTh1"
-root_path: "D:\\Coursework\\MTS\\dataset\\ETT-small" 
+root_path: "/dataset/ETT-small" 
 data_path: "ETTh1.csv"
 features: "M"
 target: "OT"
@@ -44,8 +44,8 @@ do_predict: False
 num_workers: 2
 itr: 1
 # NUM EPOCHS
-pretrain_epochs: 1
-finetune_epochs: 1
+pretrain_epochs: 50
+finetune_epochs: 50
 batch_size: 128
 patience: 50 
 learning_rate: 0.0001

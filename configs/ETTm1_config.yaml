@@ -3,7 +3,7 @@
 model_type: "PatchTST"
 model: "PatchTST"
 data: "ETTm1"
-root_path: "D:\\Coursework\\MTS\\dataset\\ETT-small"
+root_path: "/dataset/ETT-small" 
 data_path: "ETTm1.csv"
 features: "M"
 target: "OT"
