@@ -3,6 +3,7 @@
 model_type: "PatchTST"
 model: "PatchTST"
 data: "ETTm2"
+task: "forecasting"
 root_path: "/dataset/ETT-small" 
 data_path: "ETTm2.csv"
 features: "M"

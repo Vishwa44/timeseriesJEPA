@@ -3,6 +3,7 @@
 model_type: "PatchTST"
 model: "PatchTST"
 data: "custom"
+task: "forecasting"
 root_path: "D:\\Coursework\\MTS\\dataset" 
 data_path: "electricity.csv"
 features: "M"

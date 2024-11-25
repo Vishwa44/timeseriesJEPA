@@ -1,11 +1,11 @@
-# Weather PatchTST Configuration YAML
+# ETTh1 PatchTST Configuration YAML
 
 model_type: "PatchTST"
 model: "PatchTST"
-data: "custom"
-task: "forecasting"
-root_path: "D:\\Coursework\\MTS\\dataset" 
-data_path: "weather.csv"
+data: "Dataset_Classification"
+task: "classification"
+root_path: "D:\\Coursework\\MTS\\dataset\\ucr_univariate_ts" 
+data_path: "ECG5000"
 features: "M"
 target: "OT"
 freq: "h"
@@ -25,19 +25,19 @@ decomposition: 0
 kernel_size: 25
 individual: 0
 embed_type: 0
-enc_in: 21
-dec_in: 21
-c_out: 7
-d_model: 128
-predictor_d_model: 128
-n_heads: 16
+enc_in: 1
+dec_in: 1
+c_out: 1
+d_model: 16
+predictor_d_model: 16
+n_heads: 4
 e_layers: 3
 d_layers: 1
-d_ff: 256
+d_ff: 128
 moving_avg: 25
 factor: 1
 distil: True
-dropout: 0.2
+dropout: 0.3
 embed: "timeF"
 activation: "gelu"
 output_attention: False

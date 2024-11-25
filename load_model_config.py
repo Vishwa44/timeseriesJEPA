@@ -9,6 +9,7 @@ class Config:
     model: str
     model_id: str
     data: str
+    task: str
     root_path: str
     data_path: str
     features: str
@@ -94,8 +95,9 @@ def load_model_config(config_path: str, pred_len: Optional[int] = None, model_id
     config_dict['model_id'] = model_id
 
     args = Config(**config_dict)
-    setting = '{}_{}_{}_ft{}_sl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}'.format(
+    setting = '{}_{}_{}_{}_ft{}_sl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}'.format(
                 args.model_id,
+                args.task,
                 args.model,
                 args.data_path,
                 args.features,

@@ -40,7 +40,8 @@ def pretrain(args, setting, device):
             nenc=args.nenc,
             npred=args.npred,
             allow_overlap=args.allow_overlap,
-            min_keep=args.min_keep)
+            min_keep=args.min_keep,
+            task=args.task)
 
     train_data, train_loader = _get_data(args, flag='train', collator=mask_collator)
 
@@ -111,7 +112,8 @@ def pretrain(args, setting, device):
         iter_count = 0
         train_loss = []
         epoch_time = time.time()
-        for i, (seq_x, seq_y, seq_x_mark, seq_y_mark, enc_masks, pred_masks) in enumerate(tqdm(train_loader)):
+        for i, batch in enumerate(tqdm(train_loader)):
+            seq_x, enc_masks, pred_masks = batch[0], batch[-2], batch[-1]
             iter_count += 1
             seq_x = seq_x.float().to(device)
             enc_masks = [u.to(device, non_blocking=True) for u in enc_masks]

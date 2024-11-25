@@ -14,7 +14,8 @@ class TimeSeriesMaskCollator(object):
         nenc=1,
         npred=1,
         min_keep=4,
-        allow_overlap=False
+        allow_overlap=False,
+        task = "forecasting"
     ):
         super(TimeSeriesMaskCollator, self).__init__()
         self.seq_len = seq_len
@@ -28,7 +29,7 @@ class TimeSeriesMaskCollator(object):
         self.min_keep = min_keep
         self.allow_overlap = allow_overlap
         self._itr_counter = Value('i', -1)  # collator is shared across worker processes
-
+        self.task = task
     def step(self):
         i = self._itr_counter
         with i.get_lock():
@@ -76,12 +77,16 @@ class TimeSeriesMaskCollator(object):
         return mask, mask_complement
 
     def __call__(self, batch):
-        seq_x, seq_y, seq_x_mark, seq_y_mark = zip(*batch)
-
-        seq_x = torch.from_numpy(np.stack(seq_x)).float()
-        seq_y = torch.from_numpy(np.stack(seq_y)).float()
-        seq_x_mark = torch.from_numpy(np.stack(seq_x_mark)).float()
-        seq_y_mark = torch.from_numpy(np.stack(seq_y_mark)).float()
+        if self.task == "forecasting":
+            seq_x, seq_y, seq_x_mark, seq_y_mark = zip(*batch)
+            seq_x = torch.from_numpy(np.stack(seq_x)).float()
+            seq_y = torch.from_numpy(np.stack(seq_y)).float()
+            seq_x_mark = torch.from_numpy(np.stack(seq_x_mark)).float()
+            seq_y_mark = torch.from_numpy(np.stack(seq_y_mark)).float()
+        elif self.task == "classification":
+            seq_x, label = zip(*batch)
+            seq_x = torch.from_numpy(np.stack(seq_x)).float()
+            label = torch.from_numpy(np.stack(label)).float()
         B, _, N = seq_x.shape
 
         seed = self.step()
@@ -133,5 +138,7 @@ class TimeSeriesMaskCollator(object):
             ])
             for n_mask in range(self.nenc)
         ]
-
-        return seq_x, seq_y, seq_x_mark, seq_y_mark, collated_masks_enc, collated_masks_pred
+        if self.task == "forecasting":
+            return seq_x, seq_y, seq_x_mark, seq_y_mark, collated_masks_enc, collated_masks_pred
+        elif self.task == "classification":
+            return seq_x, label, collated_masks_enc, collated_masks_pred

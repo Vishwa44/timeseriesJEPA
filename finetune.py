@@ -35,22 +35,15 @@ def vali(args, model, device, vali_data, vali_loader, criterion):
     total_loss = []
     model.eval()
     with torch.no_grad():
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(tqdm(vali_loader)):
+        for i, batch in enumerate(tqdm(vali_loader)):
+            batch_x, batch_y = batch[0], batch[1]
             batch_x = batch_x.float().to(device)
             batch_y = batch_y.float()
 
-            batch_x_mark = batch_x_mark.float().to(device)
-            batch_y_mark = batch_y_mark.float().to(device)
-
-            # decoder input
-            dec_inp = torch.zeros_like(batch_y[:, -args.pred_len:, :]).float()
-            dec_inp = torch.cat([batch_y[:, :args.label_len, :], dec_inp], dim=1).float().to(device)
             # encoder - decoder
             
-            if 'Linear' in args.model or 'TST' in args.model:
-                outputs = model(batch_x)
-            else:
-                outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            outputs = model(batch_x)
+
             f_dim = -1 if args.features == 'MS' else 0
             outputs = outputs[:, -args.pred_len:, f_dim:]
             batch_y = batch_y[:, -args.pred_len:, f_dim:].to(device)
@@ -70,7 +63,6 @@ def finetune(args, model, setting, device):
     path = os.path.join(args.checkpoints, setting)
 
     train_data, train_loader = _get_data(args, flag='train')
-    vali_data, vali_loader = _get_data(args, flag='val')
     test_data, test_loader = _get_data(args, flag='test')
 
     time_now = time.time()
@@ -86,7 +78,12 @@ def finetune(args, model, setting, device):
     early_stopping = EarlyStopping(patience=args.patience, verbose=True)
 
     model_optim = optim.Adam(model.parameters(), lr=args.learning_rate)
-    criterion = nn.MSELoss()
+    if args.task == "forecasting":
+        vali_data, vali_loader = _get_data(args, flag='val')
+        criterion = nn.MSELoss()
+    elif args.task == "classification":
+        criterion = nn.CrossEntropyLoss()
+        vali_data, vali_loader = _get_data(args, flag='test')
 
     if args.scheduler:
         scheduler = lr_scheduler.OneCycleLR(optimizer = model_optim,
@@ -106,27 +103,19 @@ def finetune(args, model, setting, device):
 
         model.train()
         epoch_time = time.time()
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(tqdm(train_loader)):
+        for i, batch in enumerate(tqdm(train_loader)):
+            batch_x, batch_y = batch[0], batch[1]
             iter_count += 1
             model_optim.zero_grad()
             batch_x = batch_x.float().to(device)
-
             batch_y = batch_y.float().to(device)
-            batch_x_mark = batch_x_mark.float().to(device)
-            batch_y_mark = batch_y_mark.float().to(device)
-
-            # decoder input
-            dec_inp = torch.zeros_like(batch_y[:, -args.pred_len:, :]).float()
-            dec_inp = torch.cat([batch_y[:, :args.label_len, :], dec_inp], dim=1).float().to(device)
 
             # encoder - decoder
-            if 'Linear' in args.model or 'TST' in args.model:
-                outputs = model(batch_x)
-            else:
-                outputs = model(batch_x, batch_x_mark, dec_inp, batch_y_mark, batch_y)
-            f_dim = -1 if args.features == 'MS' else 0
-            outputs = outputs[:, -args.pred_len:, f_dim:]
-            batch_y = batch_y[:, -args.pred_len:, f_dim:].to(device)
+            outputs = model(batch_x)
+            if args.task == "forecasting":
+                f_dim = -1 if args.features == 'MS' else 0
+                outputs = outputs[:, -args.pred_len:, f_dim:]
+                batch_y = batch_y[:, -args.pred_len:, f_dim:].to(device)
             loss = criterion(outputs, batch_y)
             train_loss.append(loss.item())
 
