@@ -50,7 +50,9 @@ def pretrain(args, setting, device):
             npred=args.npred,
             allow_overlap=args.allow_overlap,
             min_keep=args.min_keep)
-
+    
+    accelerator = Accelerator()
+    
     train_data, train_loader = _get_data(args, collator=mask_collator)
 
     config = PatchTSTConfig(
@@ -124,6 +126,8 @@ def pretrain(args, setting, device):
     start_epoch = 0
     best_loss = float('inf')
 
+    encoder, predictor, target_encoder, model_optim, train_loader = accelerator.prepare(encoder, predictor, target_encoder, model_optim, train_loader)
+    
     for epoch in range(start_epoch, args.pretrain_epochs):
         print("Epoch number: ", epoch)
         iter_count = 0
@@ -160,8 +164,8 @@ def pretrain(args, setting, device):
                 loss = loss_fn(z, h)
 
                 #  Step 2. Backward & step
-
-                loss.backward()
+                accelerator.backward(loss)
+                # loss.backward()
                 model_optim.step()
                 model_optim.zero_grad()
 
@@ -172,6 +176,7 @@ def pretrain(args, setting, device):
                         param_k.data.mul_(m).add_((1.-m) * param_q.detach().data)
 
                 return float(loss)
+            
             loss = train_step()
             train_loss.append(loss)
             if i%10 == 0:
