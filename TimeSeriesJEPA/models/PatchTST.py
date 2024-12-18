@@ -1,7 +1,7 @@
 from transformers import PatchTSTConfig, PatchTSTPreTrainedModel, PatchTSTModel
 import torch
 from typing import Optional, Tuple, Union
-from datasets.mask_utils import apply_masks
+from TimeSeriesJEPA.datasets.mask_utils import apply_masks
 import torch.nn as nn
 from transformers.activations import ACT2CLS
 from transformers.modeling_outputs import BaseModelOutput

@@ -1,9 +1,9 @@
-from datasets.time_moe_dataset import TimeMoEDataset
-from datasets.time_moe_window_dataset import TimeMoEWindowDataset
+from TimeSeriesJEPA.datasets.time_moe_dataset import TimeMoEDataset
+from TimeSeriesJEPA.datasets.time_moe_window_dataset import TimeMoEWindowDataset
 import random
-from datasets.mask_collator import TimeSeriesMaskCollator
-from models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
-from datasets.mask_utils import apply_masks
+from TimeSeriesJEPA.datasets.mask_collator import TimeSeriesMaskCollator
+from TimeSeriesJEPA.models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
+from TimeSeriesJEPA.datasets.mask_utils import apply_masks
 from transformers import PatchTSTConfig
 import numpy as np
 import torch

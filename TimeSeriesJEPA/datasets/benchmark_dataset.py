@@ -6,7 +6,7 @@ import pandas as pd
 from torch.utils.data import Dataset
 from sklearn.preprocessing import StandardScaler
 
-from time_moe.utils.log_util import log_in_local_rank_0
+# from time_moe.utils.log_util import log_in_local_rank_0
 
 
 class BenchmarkEvalDataset(Dataset):

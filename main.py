@@ -3,7 +3,7 @@ import os
 import torch
 import random
 import numpy as np
-from new.pretraining import pretrain
+from TimeSeriesJEPA.pretraining import pretrain
 
 
 if __name__ == '__main__':
