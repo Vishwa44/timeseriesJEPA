@@ -137,7 +137,7 @@ class TimeSeriesJEPATrainer(Trainer):
         """
         Apply prediction masks to hidden states
         """
-        return apply_masks(h, masks)  # Assuming apply_masks is imported from your mask_utils
+        return apply_masks(h, masks)
     
     def get_train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset
