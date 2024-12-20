@@ -3,8 +3,8 @@ import os
 import torch
 import random
 import numpy as np
-from TimeSeriesJEPA.pretraining import pretrain
-
+# from TimeSeriesJEPA.pretraining import pretrain
+from TimeSeriesJEPA.hf_trainer import pretrain
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
