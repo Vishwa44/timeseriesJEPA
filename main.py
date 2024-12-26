@@ -32,16 +32,16 @@ if __name__ == '__main__':
     parser.add_argument('--channel_attention', type=bool, default=False, help='channel attention')
     
     # Formers 
-    parser.add_argument('--d_model', type=int, default=16, help='dimension of model')
+    parser.add_argument('--d_model', type=int, default=64, help='dimension of model')
     parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
-    parser.add_argument('--num_hidden_layers', type=int, default=3, help='num of encoder layers')
+    parser.add_argument('--num_hidden_layers', type=int, default=5, help='num of encoder layers')
     parser.add_argument('--ffn_dim', type=int, default=128, help='dimension of fcn')
     parser.add_argument('--dropout', type=float, default=0.05, help='dropout')
 
     # optimization
-    parser.add_argument('--num_workers', type=int, default=0, help='data loader num workers')
+    parser.add_argument('--num_workers', type=int, default=4, help='data loader num workers')
     parser.add_argument('--pretrain_epochs', type=int, default=1, help='train epochs')
-    parser.add_argument('--batch_size', type=int, default=1, help='batch size of train input data')
+    parser.add_argument('--batch_size', type=int, default=16, help='batch size of train input data')
     parser.add_argument('--train_scale', type=float, default=1.0, help='scale the target encoder')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
 

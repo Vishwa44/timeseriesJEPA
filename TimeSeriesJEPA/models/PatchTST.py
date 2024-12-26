@@ -561,17 +561,25 @@ class PatchTSTPositionalEncoding(nn.Module):
         return hidden_state
 
 class PatchTSTEmbedding(nn.Module):
-    def __init__(self, config: PatchTSTConfig):
+    def __init__(self, config: PatchTSTConfig, input_embedding: Optional[int] = None):
         super().__init__()
         self.num_input_channels = config.num_input_channels
         self.share_embedding = config.share_embedding
         # Input encoding: projection of feature vectors onto a d-dim vector space
-        if self.share_embedding:
-            self.input_embedding = nn.Linear(config.patch_length, config.d_model)
+        if input_embedding:
+            if self.share_embedding:
+                self.input_embedding = nn.Linear(input_embedding, config.d_model)
+            else:
+                self.input_embedding = nn.ModuleList()
+                for _ in range(config.num_input_channels):
+                    self.input_embedding.append(nn.Linear(config.patch_length, config.d_model))
         else:
-            self.input_embedding = nn.ModuleList()
-            for _ in range(config.num_input_channels):
-                self.input_embedding.append(nn.Linear(config.patch_length, config.d_model))
+            if self.share_embedding:
+                self.input_embedding = nn.Linear(config.patch_length, config.d_model)
+            else:
+                self.input_embedding = nn.ModuleList()
+                for _ in range(config.num_input_channels):
+                    self.input_embedding.append(nn.Linear(config.patch_length, config.d_model))
 
     def forward(self, patch_input: torch.Tensor):
         """
@@ -858,7 +866,7 @@ class PatchTSTPredictorEncoder(PatchTSTPreTrainedModel):
         self.gradient_checkpointing = False
 
         # Input embedding: projection of feature vectors onto a d-dim vector space
-        self.embedder = PatchTSTEmbedding(config)
+        self.embedder = PatchTSTEmbedding(config, input_embedding=config.d_model)
         # Positional encoding
         self.positional_encoder = PatchTSTPositionalEncoding(config, num_patches)
         self.position_enc = self.positional_encoder.position_enc
@@ -920,7 +928,7 @@ class PatchTSTPredictorEncoder(PatchTSTPreTrainedModel):
         hidden_state = hidden_state.repeat(len(pred_mask), 1, 1, 1)
 
         hidden_state = torch.cat([hidden_state, pred_tokens], dim=2)
-        
+
         encoder_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
         for encoder_layer in self.layers:
@@ -970,7 +978,7 @@ class PatchTSTPredictorModelJEPA(PatchTSTPreTrainedModel):
         )
 
         # x: [bs x num_input_channels x num_patches x patch_length] for predicting
-        
+
         encoder_output = self.encoder(
             patch_input=x, output_hidden_states=output_hidden_states, output_attentions=output_attentions, enc_mask=enc_mask, pred_mask=pred_mask
         )
