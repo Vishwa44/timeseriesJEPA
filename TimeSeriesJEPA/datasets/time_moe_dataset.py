@@ -10,7 +10,7 @@ from .binary_dataset import BinaryDataset
 
 class TimeMoEDataset(TimeSeriesDataset):
 
-    def __init__(self, data_folder, normalization_method=None):
+    def __init__(self, data_folder, normalization_method=None, val=False):
         self.data_folder = data_folder
         self.normalization_method = normalization_method
         self.datasets = []
@@ -51,7 +51,13 @@ class TimeMoEDataset(TimeSeriesDataset):
                         ds = BinaryDataset(folder_path)
                         if len(ds) > 0:
                             self.datasets.append(ds)
-
+        print("before split: ", len(self.datasets))
+        if val:
+            if len(self.datasets) > 1:
+                self.datasets = self.datasets[int(len(self.datasets)*0.9):]
+        else:
+            self.datasets = self.datasets[:int(len(self.datasets)*0.9)]
+        print("after split: ", len(self.datasets))
         self.cumsum_lengths = [0]
         for ds in self.datasets:
             self.cumsum_lengths.append(

@@ -22,10 +22,12 @@ from tqdm import tqdm
 
 
 def _get_data(args, collator):
-    ds = TimeMoEDataset(args.data_path)
-    windowds = TimeMoEWindowDataset(ds, context_length=args.seq_len, prediction_length=0)
-    print("dataset loaded, total size: ", len(windowds))
-    return windowds
+    trainds = TimeMoEDataset(args.data_path, val=False)
+    trainwindowds = TimeMoEWindowDataset(trainds, context_length=args.seq_len, prediction_length=0)
+    valds = TimeMoEDataset(args.data_path, val=True)
+    valwindowds = TimeMoEWindowDataset(valds, context_length=args.seq_len, prediction_length=0)
+    print("dataset loaded, total size: ", len(trainwindowds))
+    return trainwindowds, valwindowds
 
 
 class TimeSeriesJEPATrainer(Trainer):
@@ -69,6 +71,7 @@ class TimeSeriesJEPATrainer(Trainer):
         """
         Custom optimizer creation with parameter groups
         """
+        print("custom optimizer created")
         param_groups = [
             {
                 'params': (p for n, p in self.model.named_parameters()
@@ -139,6 +142,23 @@ class TimeSeriesJEPATrainer(Trainer):
         """
         return apply_masks(h, masks)
     
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys = None):
+        """
+        Custom prediction step for evaluation that reuses compute_loss.
+        Returns tuple of (loss, predictions, labels)
+        """
+        with torch.no_grad():  # Disable gradients for evaluation
+            loss, outputs = self.compute_loss(model, inputs, return_outputs=True)
+            
+            if prediction_loss_only:
+                return (loss, None, None)
+            
+            # Get the predictions and targets from compute_loss outputs if needed
+            predictions = outputs[0] if outputs is not None else None
+            labels = outputs[1] if outputs is not None and len(outputs) > 1 else None
+            
+            return (loss, predictions, labels)
+        
     def get_train_dataloader(self) -> DataLoader:
         train_dataset = self.train_dataset
         data_collator = self.data_collator
@@ -168,7 +188,7 @@ def pretrain(args, setting, device):
             allow_overlap=args.allow_overlap,
             min_keep=args.min_keep)
         
-    train_data = _get_data(args, collator=mask_collator)
+    train_data, val_data = _get_data(args, collator=mask_collator)
 
     config = PatchTSTConfig(
                         num_input_channels=1,
@@ -210,7 +230,10 @@ def pretrain(args, setting, device):
         save_strategy="epoch",
         max_steps=1000,
         logging_strategy="steps",
-        logging_steps=10
+        logging_steps=10,
+        do_eval = True,
+        eval_strategy="steps",
+        eval_steps=100
     )
 
     # Initialize the trainer
@@ -220,6 +243,7 @@ def pretrain(args, setting, device):
         target_encoder=target_encoder,
         args=training_args,
         train_dataset=train_data,
+        eval_dataset=val_data,
         data_collator=mask_collator,
         momentum_start=args.ema[0],
         momentum_end=args.ema[1],
@@ -227,3 +251,4 @@ def pretrain(args, setting, device):
 
     # Train the model
     trainer.train()
+    trainer.predictor.save_pretrained(os.path.join(args.checkpoint, "predictor"), safe_serialization=False)
