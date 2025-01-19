@@ -19,6 +19,9 @@ import time
 from pathlib import Path
 from accelerate import Accelerator
 from tqdm import tqdm
+import wandb
+
+os.environ["WANDB_PROJECT"] = "TimeSeriesJEPA" 
 
 
 def _get_data(args, collator):
@@ -103,6 +106,15 @@ class TimeSeriesJEPATrainer(Trainer):
             lr=self.args.learning_rate
         )
         return self.optimizer
+    
+    def create_scheduler(self, num_training_steps, optimizer):
+        if self.lr_scheduler is None:
+            self.lr_scheduler = lr_scheduler.OneCycleLR(optimizer = optimizer,
+                                                    steps_per_epoch = num_training_steps,
+                                                    pct_start = 0.1,
+                                                    max_lr = self.args.learning_rate, epochs = self.args.num_train_epochs)
+            self._created_lr_scheduler = True
+        return self.lr_scheduler
 
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         """
@@ -288,18 +300,20 @@ def pretrain(args, setting, device):
     params = sum([np.prod(p.size()) for p in model_parameters])
     print("predictor parameters: ", params)
 
+    
     training_args = TrainingArguments(
         output_dir="./results",
         num_train_epochs=args.pretrain_epochs,
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         save_strategy="epoch",
-        max_steps=100000,
+        max_steps=1000000,
         logging_strategy="steps",
         logging_steps=100,
         do_eval = True,
         eval_strategy="steps",                                     
-        eval_steps=100000                                  
+        eval_steps=100000,
+        report_to="wandb"         
     )                                                                                                                                                                                                                                        
                                                                                                                                                                                                                      
     # Initialize the trainer                                                            
