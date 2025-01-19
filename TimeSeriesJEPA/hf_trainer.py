@@ -188,11 +188,6 @@ class TimeSeriesJEPATrainer(Trainer):
         with torch.no_grad():
             for param_q, param_k in zip(self.model.parameters(), self.target_encoder.parameters()):
                 param_k.data.mul_(m).add_((1.-m) * param_q.detach().data)
-        
-        # # Update target encoder parameters
-        # with torch.no_grad():
-        #     for param_q, param_k in zip(self.model.parameters(), self.target_encoder.parameters()):
-        #         param_k.data.mul_(self.current_momentum).add_((1 - self.current_momentum) * param_q.detach().data)
 
     def _apply_masks(self, h, masks):
         """
