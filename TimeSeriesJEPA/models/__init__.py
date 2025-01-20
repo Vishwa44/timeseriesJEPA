@@ -1,1 +1,1 @@
-from .PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
+from .PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA, PatchTSTForPrediction

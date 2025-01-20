@@ -302,7 +302,7 @@ def pretrain(args, setting, device):
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         save_strategy="epoch",
-        max_steps=1000000,
+        max_steps=2000,
         logging_strategy="steps",
         logging_steps=100,
         do_eval = True,
@@ -326,4 +326,4 @@ def pretrain(args, setting, device):
 
     # Train the model
     trainer.train()
-    trainer.predictor.save_pretrained(os.path.join(args.checkpoint, "predictor"), safe_serialization=False)
+    trainer.predictor.save_pretrained(os.path.join(args.checkpoints, "predictor"), safe_serialization=False)
