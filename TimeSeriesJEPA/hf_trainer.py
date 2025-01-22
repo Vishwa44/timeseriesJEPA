@@ -5,6 +5,7 @@ from TimeSeriesJEPA.datasets.mask_collator import TimeSeriesMaskCollator
 from TimeSeriesJEPA.models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
 from TimeSeriesJEPA.datasets.mask_utils import apply_masks
 from transformers import PatchTSTConfig, Trainer, TrainingArguments
+from transformers import PreTrainedModel
 import numpy as np
 import torch
 import torch.nn as nn
@@ -22,7 +23,9 @@ from tqdm import tqdm
 import wandb
 
 os.environ["WANDB_PROJECT"] = "TimeSeriesJEPA" 
-
+TRAINING_ARGS_NAME = "training_args.bin"
+PREDICTOR_PATH_NAME = "Predictor"
+PREDICTOR_TARGET_ENC_NAME = "Target_encoder"
 
 def _get_data(args, collator):
     trainds = TimeMoEDataset(args.data_path, val=False)
@@ -225,8 +228,28 @@ class TimeSeriesJEPATrainer(Trainer):
             "shuffle": True
         }
 
-
         return self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
+    
+    def _save(self, output_dir = None, state_dict=None):
+        # If we are executing this function, we are the process zero, so we don't check for that.
+        output_dir = output_dir if output_dir is not None else self.args.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        print("Saving model at: ", output_dir)
+        self.model.save_pretrained(
+                output_dir, state_dict=state_dict, safe_serialization=self.args.save_safetensors
+            )
+
+        if self.predictor is not None:
+            predictor_path = os.path.join(output_dir, PREDICTOR_PATH_NAME)
+            os.makedirs(predictor_path, exist_ok=True)
+            self.predictor.save_pretrained(predictor_path)
+
+        if self.predictor is not None:
+            target_enc_path = os.path.join(output_dir, PREDICTOR_TARGET_ENC_NAME)
+            os.makedirs(target_enc_path, exist_ok=True)
+            self.predictor.save_pretrained(target_enc_path)
+        # Good practice: save your training arguments together with the trained model
+        torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
 
 
 def pretrain(args, setting, device):
@@ -302,12 +325,12 @@ def pretrain(args, setting, device):
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         save_strategy="epoch",
-        max_steps=2000,
+        max_steps=10000,
         logging_strategy="steps",
         logging_steps=100,
         do_eval = True,
         eval_strategy="steps",                                     
-        eval_steps=100000,
+        eval_steps=1000,
         report_to="wandb"         
     )                                                                                                                                                                                                                                        
                                                                                                                                                                                                                      

@@ -882,7 +882,7 @@ class PatchTSTPredictorEncoder(PatchTSTPreTrainedModel):
         self.embedder = PatchTSTEmbedding(config, input_embedding=config.d_model)
         # Positional encoding
         self.positional_encoder = PatchTSTPositionalEncoding(config, num_patches)
-        self.position_enc = self.positional_encoder.position_enc
+        # self.position_enc = self.positional_encoder.position_enc
         self.positional_dropout = (
             nn.Dropout(config.positional_dropout) if config.positional_dropout > 0 else nn.Identity()
         )
@@ -927,13 +927,13 @@ class PatchTSTPredictorEncoder(PatchTSTPreTrainedModel):
         # Positional encoding
         batch = patch_input.shape[0]
         n_vars = patch_input.shape[1]
-        position_enc_temp = self.position_enc.repeat(batch, n_vars, 1, 1)
+        position_enc_temp = self.positional_encoder.position_enc.repeat(batch, n_vars, 1, 1)
         position_enc_temp = apply_masks(position_enc_temp, enc_mask)
         hidden_state = self.positional_dropout(patch_input + position_enc_temp)
 
         _, _, N_ctxt, D = hidden_state.shape
 
-        pos_embed_p_mask = self.position_enc.repeat(batch, n_vars, 1, 1)
+        pos_embed_p_mask = self.positional_encoder.position_enc.repeat(batch, n_vars, 1, 1)
         pos_embed_p_mask = apply_masks(pos_embed_p_mask, pred_mask)
         pred_tokens = self.mask_token.repeat(pos_embed_p_mask.size(0), pos_embed_p_mask.size(1), pos_embed_p_mask.size(2), 1)
         pred_tokens += pos_embed_p_mask
