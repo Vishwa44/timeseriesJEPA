@@ -276,8 +276,6 @@ def pretrain(args, setting, device):
                         context_length=args.seq_len,
                         patch_length=args.patch_len,
                         patch_stride=args.stride,
-                        prediction_length=96,
-                        random_mask_ratio=0.4,
                         d_model=args.d_model,
                         num_attention_heads=args.n_heads,
                         num_hidden_layers=args.num_hidden_layers,
@@ -287,7 +285,7 @@ def pretrain(args, setting, device):
                         channel_attention=args.channel_attention,
                         scaling="std",
                         pre_norm=args.pre_norm,
-                        norm_type="batchnorm",
+                        norm_type=args.norm_type,
                         positional_encoding_type = "sincos"
                         )
     pred_config = PatchTSTPredConfig(
@@ -296,8 +294,6 @@ def pretrain(args, setting, device):
                         context_length=args.seq_len,
                         patch_length=args.patch_len,
                         patch_stride=args.stride,
-                        prediction_length=96,
-                        random_mask_ratio=0.4,
                         d_model=args.pred_d_model,
                         num_attention_heads=args.pred_n_heads,
                         num_hidden_layers=args.pred_num_hidden_layers,
@@ -306,8 +302,8 @@ def pretrain(args, setting, device):
                         pooling_type=None,
                         channel_attention=False,
                         scaling="std",
-                        pre_norm=args.pre_norm,
-                        norm_type="batchnorm",
+                        pre_norm=args.pred_pre_norm,
+                        norm_type=args.pred_norm_type,
                         positional_encoding_type = "sincos"
                         )
     
@@ -329,12 +325,12 @@ def pretrain(args, setting, device):
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         save_strategy="epoch",
-        max_steps=10000,
+        max_steps=args.max_steps,
         logging_strategy="steps",
         logging_steps=100,
         do_eval = True,
         eval_strategy="steps",                                     
-        eval_steps=1000,
+        eval_steps=300,
         report_to="wandb"         
     )                                                                                                                                                                                                                                        
                                                                                                                                                                                                                      
@@ -353,4 +349,4 @@ def pretrain(args, setting, device):
 
     # Train the model
     trainer.train()
-    trainer.predictor.save_pretrained(os.path.join(args.checkpoints, "predictor"), safe_serialization=False)
+    # trainer.predictor.save_pretrained(os.path.join(args.checkpoints, "predictor"), safe_serialization=False)
