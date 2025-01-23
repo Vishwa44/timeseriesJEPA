@@ -27,6 +27,11 @@ TRAINING_ARGS_NAME = "training_args.bin"
 PREDICTOR_PATH_NAME = "Predictor"
 PREDICTOR_TARGET_ENC_NAME = "Target_encoder"
 
+class PatchTSTPredConfig(PatchTSTConfig):
+    def __init__(self, enc_dim: int = 64,**kwargs):
+        self.enc_dim = enc_dim
+        super().__init__(**kwargs)
+
 def _get_data(args, collator):
     trainds = TimeMoEDataset(args.data_path, val=False)
     trainwindowds = TimeMoEWindowDataset(trainds, context_length=args.seq_len, prediction_length=0)
@@ -225,7 +230,7 @@ class TimeSeriesJEPATrainer(Trainer):
             "num_workers": self.args.dataloader_num_workers,
             "pin_memory": self.args.dataloader_pin_memory,
             "persistent_workers": self.args.dataloader_persistent_workers,
-            "shuffle": True
+            "shuffle": False
         }
 
         return self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
@@ -278,7 +283,6 @@ def pretrain(args, setting, device):
                         num_hidden_layers=args.num_hidden_layers,
                         ffn_dim=args.ffn_dim,
                         dropout=args.dropout,
-                        head_dropout=args.head_dropout,
                         pooling_type=None,
                         channel_attention=args.channel_attention,
                         scaling="std",
@@ -286,7 +290,8 @@ def pretrain(args, setting, device):
                         norm_type="batchnorm",
                         positional_encoding_type = "sincos"
                         )
-    pred_config = PatchTSTConfig(
+    pred_config = PatchTSTPredConfig(
+                        enc_dim=args.enc_dim,
                         num_input_channels=1,
                         context_length=args.seq_len,
                         patch_length=args.patch_len,
@@ -298,7 +303,6 @@ def pretrain(args, setting, device):
                         num_hidden_layers=args.pred_num_hidden_layers,
                         ffn_dim=args.pred_ffn_dim,
                         dropout=args.pred_dropout,
-                        head_dropout=args.pred_head_dropout,
                         pooling_type=None,
                         channel_attention=False,
                         scaling="std",

@@ -37,13 +37,13 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.05, help='dropout')
 
     # Predictor
+    parser.add_argument('--enc_dim', type=int, default=128, help='projection dimension of model')
     parser.add_argument('--pred_fc_dropout', type=float, default=0.05, help='fully connected dropout')
-    parser.add_argument('--pred_head_dropout', type=float, default=0.0, help='head dropout')
     parser.add_argument('--pred_pre_norm', type=bool, default=True, help='pre norm')
-    parser.add_argument('--pred_d_model', type=int, default=128, help='dimension of model')
+    parser.add_argument('--pred_d_model', type=int, default=64, help='dimension of model')
     parser.add_argument('--pred_n_heads', type=int, default=4, help='num of heads')
     parser.add_argument('--pred_num_hidden_layers', type=int, default=1, help='num of predictor layers')
-    parser.add_argument('--pred_ffn_dim', type=int, default=128, help='dimension of fcn')
+    parser.add_argument('--pred_ffn_dim', type=int, default=64, help='dimension of fcn')
     parser.add_argument('--pred_dropout', type=float, default=0.05, help='dropout')
 
     # optimization

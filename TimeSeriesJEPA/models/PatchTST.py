@@ -878,8 +878,9 @@ class PatchTSTPredictorEncoder(PatchTSTPreTrainedModel):
         self.num_patches = num_patches
         self.gradient_checkpointing = False
 
+        
         # Input embedding: projection of feature vectors onto a d-dim vector space
-        self.embedder = PatchTSTEmbedding(config, input_embedding=config.d_model)
+        self.pred_projector = nn.Linear(config.enc_dim, config.d_model)
         # Positional encoding
         self.positional_encoder = PatchTSTPositionalEncoding(config, num_patches)
         # self.position_enc = self.positional_encoder.position_enc
@@ -892,7 +893,7 @@ class PatchTSTPredictorEncoder(PatchTSTPreTrainedModel):
         self.mask_token = nn.Parameter(torch.zeros(1, 1, config.d_model))
         # Initializing output projection layer and norm layer
         self.predictor_norm = nn.LayerNorm(config.d_model)
-        self.predictor_proj = nn.Linear(config.d_model, config.d_model)
+        self.predictor_proj = nn.Linear(config.d_model, config.enc_dim)
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -919,11 +920,8 @@ class PatchTSTPredictorEncoder(PatchTSTPreTrainedModel):
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
         )
 
-        batch = patch_input.shape[0]
-        n_vars = patch_input.shape[1]
-
         # Input embedding
-        patch_input = self.embedder(patch_input)
+        patch_input = self.pred_projector(patch_input)
         # Positional encoding
         batch = patch_input.shape[0]
         n_vars = patch_input.shape[1]
