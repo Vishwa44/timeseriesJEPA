@@ -1,31 +1,23 @@
 from TimeSeriesJEPA.datasets.time_moe_dataset import TimeMoEDataset
 from TimeSeriesJEPA.datasets.time_moe_window_dataset import TimeMoEWindowDataset
-import random
 from TimeSeriesJEPA.datasets.mask_collator import TimeSeriesMaskCollator
 from TimeSeriesJEPA.models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
 from TimeSeriesJEPA.datasets.mask_utils import apply_masks
 from transformers import PatchTSTConfig, Trainer, TrainingArguments
-from transformers import PreTrainedModel
 import numpy as np
 import torch
-import torch.nn as nn
-from torch import optim
 import torch.nn.functional as F
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
-import time
 import copy
 import os
 import time
-from pathlib import Path
-from accelerate import Accelerator
-from tqdm import tqdm
-import wandb
+
 
 os.environ["WANDB_PROJECT"] = "TimeSeriesJEPA" 
 TRAINING_ARGS_NAME = "training_args.bin"
 PREDICTOR_PATH_NAME = "Predictor"
-PREDICTOR_TARGET_ENC_NAME = "Target_encoder"
+TARGET_ENC_NAME = "Target_encoder"
 
 class PatchTSTPredConfig(PatchTSTConfig):
     def __init__(self, enc_dim: int = 64,**kwargs):
@@ -249,10 +241,10 @@ class TimeSeriesJEPATrainer(Trainer):
             os.makedirs(predictor_path, exist_ok=True)
             self.predictor.save_pretrained(predictor_path)
 
-        if self.predictor is not None:
-            target_enc_path = os.path.join(output_dir, PREDICTOR_TARGET_ENC_NAME)
+        if self.target_encoder is not None:
+            target_enc_path = os.path.join(output_dir, TARGET_ENC_NAME)
             os.makedirs(target_enc_path, exist_ok=True)
-            self.predictor.save_pretrained(target_enc_path)
+            self.target_encoder.save_pretrained(target_enc_path)
         # Good practice: save your training arguments together with the trained model
         torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
 
@@ -330,7 +322,7 @@ def pretrain(args, setting, device):
         logging_steps=100,
         do_eval = True,
         eval_strategy="steps",                                     
-        eval_steps=300,
+        eval_steps=1000,
         report_to="wandb"         
     )                                                                                                                                                                                                                                        
                                                                                                                                                                                                                      
@@ -349,4 +341,3 @@ def pretrain(args, setting, device):
 
     # Train the model
     trainer.train()
-    # trainer.predictor.save_pretrained(os.path.join(args.checkpoints, "predictor"), safe_serialization=False)
