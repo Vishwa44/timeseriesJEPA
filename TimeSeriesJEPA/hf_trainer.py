@@ -138,7 +138,8 @@ class TimeSeriesJEPATrainer(Trainer):
                 return z[0]
 
             def loss_fn(z, h):
-                loss = F.smooth_l1_loss(z, h)
+                # loss = F.smooth_l1_loss(z, h)
+                loss = F.mse_loss(z, h)
                 return loss
 
             # Step 1. Forward
@@ -312,12 +313,12 @@ def pretrain(args, setting, device):
 
     
     training_args = TrainingArguments(
-        output_dir="./results",
+        output_dir=os.path.join("results", setting),
         num_train_epochs=args.pretrain_epochs,
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         save_strategy="epoch",
-        max_steps=args.max_steps,
+        # max_steps=args.max_steps,
         logging_strategy="steps",
         logging_steps=100,
         do_eval = True,

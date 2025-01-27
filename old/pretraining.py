@@ -1,12 +1,12 @@
 from data_provider.data_factory import data_provider
-from data_provider.mask_collator import TimeSeriesMaskCollator
+# from data_provider.mask_collator import TimeSeriesMaskCollator
+from datasets.mask_collator import TimeSeriesMaskCollator
+from datasets.time_moe_dataset import TimeMoEDataset
+from datasets.time_moe_window_dataset import TimeMoEWindowDataset
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, test_params_flop
 from utils.metrics import metric
-from model.PatchTST_encoder import PatchTST_embedding
-from model.PatchTST_predictor import PatchTST_predictor
-from model.PatchTST_finetune import PatchTST_finetune
 from data_provider.mask_utils import apply_masks
-
+from models import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
 import numpy as np
 import torch
 import torch.nn as nn
@@ -18,11 +18,26 @@ import copy
 import os
 import time
 from pathlib import Path
-
+from torch.utils.data import DataLoader
+from transformers import PatchTSTConfig
 from tqdm import tqdm
-def _get_data(args, flag, collator=None):
-        data_set, data_loader = data_provider(args, flag, collator)
-        return data_set, data_loader
+
+# def _get_data(args, flag, collator=None):
+#         data_set, data_loader = data_provider(args, flag, collator)
+#         return data_set, data_loader
+
+def _get_data(args, flag, collator):
+    trainds = TimeMoEDataset('D:\Time_300B', val=False)
+    trainwindowds = TimeMoEWindowDataset(trainds, context_length=args.seq_len, prediction_length=0)
+    print("dataset loaded, total size: ", len(trainwindowds))
+    data_loader = DataLoader(
+        trainwindowds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        drop_last=True,
+        collate_fn=collator)
+    return trainwindowds, data_loader
 
 def pretrain(args, setting, device):
     
@@ -32,7 +47,7 @@ def pretrain(args, setting, device):
 
     mask_collator = TimeSeriesMaskCollator(
             seq_len=args.seq_len,
-            pred_len=args.pred_len,
+            # pred_len=args.pred_len,
             patch_size=args.patch_len,
             stride=args.stride,
             pred_mask_scale=args.pred_mask_scale,
@@ -40,13 +55,37 @@ def pretrain(args, setting, device):
             nenc=args.nenc,
             npred=args.npred,
             allow_overlap=args.allow_overlap,
-            min_keep=args.min_keep,
-            task=args.task)
+            min_keep=args.min_keep)
+            # task=args.task)
 
     train_data, train_loader = _get_data(args, flag='train', collator=mask_collator)
 
-    encoder = PatchTST_embedding(args).float().to(device)
-    predictor = PatchTST_predictor(args).float().to(device)
+    # encoder = PatchTST_embedding(args).float().to(device)
+    # predictor = PatchTST_predictor(args).float().to(device)
+    enc_config = PatchTSTConfig(
+                        num_input_channels=1,
+                        context_length=args.seq_len,
+                        patch_length=args.patch_len,
+                        patch_stride=args.stride,
+                        prediction_length=96,
+                        random_mask_ratio=0.4,
+                        d_model=args.d_model,
+                        num_attention_heads=args.n_heads,
+                        num_hidden_layers=args.enc_in,
+                        ffn_dim=args.d_ff,
+                        dropout=args.dropout,
+                        head_dropout=args.head_dropout,
+                        pooling_type=None,
+                        channel_attention=False,
+                        scaling="std",
+                        pre_norm=False,
+                        norm_type="batchnorm",
+                        positional_encoding_type = "sincos"
+                        )
+
+    
+    encoder = PatchTSTModelJEPA(enc_config).float().to(device)
+    predictor = PatchTSTPredictorModelJEPA(enc_config).float().to(device)
 
     target_encoder = copy.deepcopy(encoder)
     model_parameters = filter(lambda p: p.requires_grad, encoder.parameters())
@@ -122,16 +161,16 @@ def pretrain(args, setting, device):
                 def forward_target():
                     with torch.no_grad():
                         h = target_encoder(seq_x)
-                        h = F.layer_norm(h, (h.size(-1),))  # normalize over feature-dim
-                        B = len(h)
+                        h = F.layer_norm(h[0], (h[0].size(-1),))  # normalize over feature-dim
+                        B = len(h[0])
                         # -- create targets (masked regions of h)
                         h = apply_masks(h, pred_masks)
                         return h
 
                 def forward_context():
                     z = encoder(seq_x, enc_masks)
-                    z = predictor(z, enc_masks, pred_masks)
-                    return z
+                    z = predictor(z[0], enc_masks, pred_masks)
+                    return z[0]
 
                 def loss_fn(z, h):
                     loss = F.smooth_l1_loss(z, h)
@@ -157,6 +196,8 @@ def pretrain(args, setting, device):
                 return float(loss)
             loss = train_step()
             train_loss.append(loss)
+            if i%100 == 0:
+                print("train loss iter "+str(i)+" loss: ", sum(train_loss)/len(train_loss))
         epoch_loss = np.average(train_loss)
         
 
