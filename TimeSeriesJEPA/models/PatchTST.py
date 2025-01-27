@@ -770,7 +770,8 @@ class PatchTSTEncoder(PatchTSTPreTrainedModel):
         self.positional_encoder = PatchTSTPositionalEncoding(config, num_patches)
         # Encoder
         self.layers = nn.ModuleList([PatchTSTEncoderLayer(config) for i in range(config.num_hidden_layers)])
-
+        
+        self.norm = nn.LayerNorm(config.d_model)
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -818,6 +819,7 @@ class PatchTSTEncoder(PatchTSTPreTrainedModel):
             if output_attentions:
                 all_attentions = all_attentions + (layer_outputs[1],)
         # return past_values, hidden_states
+        hidden_state = self.norm(hidden_state)
         return BaseModelOutput(last_hidden_state=hidden_state, hidden_states=encoder_states, attentions=all_attentions)
 
 
