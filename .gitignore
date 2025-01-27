@@ -8,3 +8,7 @@ __pycache__
 **/__pycache__/
 results/
 wandb/
+
+#ignore
+!notebooks/finetuning_eval.ipynb
+!notebooks/visualize_masks.ipynb
