@@ -25,8 +25,12 @@ class TimeMoEWindowDataset:
         except ImportError:
             pass
         self.sub_seq_indexes = []
+        skipped_sequences = 0
         for seq_idx in iterator:
             n_points = self.dataset.get_sequence_length_by_idx(seq_idx)
+            if n_points < self.window_size_plus_one:
+                skipped_sequences += 1
+                continue
             for offset_idx in range(0, n_points, self.window_size):
                 self.sub_seq_indexes.append((seq_idx, offset_idx))
 

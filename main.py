@@ -28,20 +28,20 @@ if __name__ == '__main__':
     parser.add_argument('--stride', type=int, default=8, help='stride')
     parser.add_argument('--pre_norm', type=bool, default=True, help='pre norm')
     parser.add_argument('--channel_attention', type=bool, default=False, help='channel attention')
-    parser.add_argument('--d_model', type=int, default=64, help='dimension of model')
-    parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
-    parser.add_argument('--num_hidden_layers', type=int, default=3, help='num of encoder layers')
-    parser.add_argument('--ffn_dim', type=int, default=64, help='dimension of fcn')
+    parser.add_argument('--d_model', type=int, default=256, help='dimension of model')
+    parser.add_argument('--n_heads', type=int, default=16, help='num of heads')
+    parser.add_argument('--num_hidden_layers', type=int, default=4, help='num of encoder layers')
+    parser.add_argument('--ffn_dim', type=int, default=256, help='dimension of fcn')
     parser.add_argument('--norm_type', type=str, default='batchnorm',help='Normalization type')
     parser.add_argument('--dropout', type=float, default=0.05, help='dropout')
 
     # Predictor
-    parser.add_argument('--enc_dim', type=int, default=64, help='projection dimension of model')
+    parser.add_argument('--enc_dim', type=int, default=256, help='projection dimension of model')
     parser.add_argument('--pred_pre_norm', type=bool, default=True, help='pre norm')
-    parser.add_argument('--pred_d_model', type=int, default=32, help='dimension of model')
+    parser.add_argument('--pred_d_model', type=int, default=64, help='dimension of model')
     parser.add_argument('--pred_n_heads', type=int, default=4, help='num of heads')
-    parser.add_argument('--pred_num_hidden_layers', type=int, default=1, help='num of predictor layers')
-    parser.add_argument('--pred_ffn_dim', type=int, default=32, help='dimension of fcn')
+    parser.add_argument('--pred_num_hidden_layers', type=int, default=2, help='num of predictor layers')
+    parser.add_argument('--pred_ffn_dim', type=int, default=64, help='dimension of fcn')
     parser.add_argument('--pred_dropout', type=float, default=0.05, help='dropout')
     parser.add_argument('--pred_norm_type', type=str, default='batchnorm',help='Normalization type')
 
@@ -64,12 +64,16 @@ if __name__ == '__main__':
     print(args)
 
 
-    setting = 'PatchTST_Time300B_sl{}_dm{}_nh{}_el{}_fd{}_bs{}_lr{}'.format(
+    setting = 'PatchTST_Time300B_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_clean_data'.format(
         args.seq_len,
         args.d_model,
         args.n_heads,
         args.num_hidden_layers,
         args.ffn_dim,
+        args.pred_d_model,
+        args.pred_n_heads,
+        args.pred_num_hidden_layers,
+        args.pred_ffn_dim,
         args.batch_size,
         args.learning_rate
         )

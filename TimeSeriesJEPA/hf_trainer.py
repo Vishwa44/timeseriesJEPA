@@ -223,7 +223,7 @@ class TimeSeriesJEPATrainer(Trainer):
             "num_workers": self.args.dataloader_num_workers,
             "pin_memory": self.args.dataloader_pin_memory,
             "persistent_workers": self.args.dataloader_persistent_workers,
-            "shuffle": False
+            "shuffle": True
         }
 
         return self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
