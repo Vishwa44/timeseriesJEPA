@@ -51,7 +51,7 @@ class TimeMoEWindowDataset:
             seq = np.pad(seq, (0, n_pad), 'constant', constant_values=0)
             loss_mask = np.pad(loss_mask, (0, n_pad), 'constant', constant_values=0)
 
-        return seq[:-1], seq[1:], loss_mask
+        return np.expand_dims(seq[:-1], 1)
 
 
 

@@ -1,4 +1,5 @@
 from TimeSeriesJEPA.datasets.time_moe_dataset import TimeMoEDataset
+from TimeSeriesJEPA.datasets.benchmark_dataset import BenchmarkDataset
 from TimeSeriesJEPA.datasets.time_moe_window_dataset import TimeMoEWindowDataset
 from TimeSeriesJEPA.datasets.mask_collator import TimeSeriesMaskCollator
 from TimeSeriesJEPA.models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
@@ -24,14 +25,17 @@ class PatchTSTPredConfig(PatchTSTConfig):
         self.enc_dim = enc_dim
         super().__init__(**kwargs)
 
-def _get_data(args, collator):
-    trainds = TimeMoEDataset(args.data_path, val=False)
-    trainwindowds = TimeMoEWindowDataset(trainds, context_length=args.seq_len, prediction_length=0)
-    valds = TimeMoEDataset(args.data_path, val=True)
-    valwindowds = TimeMoEWindowDataset(valds, context_length=args.seq_len, prediction_length=0)
-    print("dataset loaded, total size: ", len(trainwindowds))
+def _get_data(args):
+    if args.dataset=='Time300B':
+        trainds = TimeMoEDataset(args.data_path, val=False)
+        trainwindowds = TimeMoEWindowDataset(trainds, context_length=args.seq_len, prediction_length=0)
+        valds = TimeMoEDataset(args.data_path, val=True)
+        valwindowds = TimeMoEWindowDataset(valds, context_length=args.seq_len, prediction_length=0)
+    else:
+        trainwindowds = BenchmarkDataset(csv_path=args.data_path, context_length=args.seq_len, prediction_length=0, flag='train', returndict=False)
+        valwindowds = BenchmarkDataset(csv_path=args.data_path, context_length=args.seq_len, prediction_length=0, flag='test', returndict=False)
+    print("dataset loaded, total size: ", len(trainwindowds), len(valwindowds))
     return trainwindowds, valwindowds
-
 
 class TimeSeriesJEPATrainer(Trainer):
     def __init__(
@@ -262,7 +266,7 @@ def pretrain(args, setting, device):
             allow_overlap=args.allow_overlap,
             min_keep=args.min_keep)
         
-    train_data, val_data = _get_data(args, collator=mask_collator)
+    train_data, val_data = _get_data(args)
 
     enc_config = PatchTSTConfig(
                         num_input_channels=1,
@@ -320,10 +324,10 @@ def pretrain(args, setting, device):
         save_strategy="epoch",
         # max_steps=args.max_steps,
         logging_strategy="steps",
-        logging_steps=100,
+        logging_steps=10,
         do_eval = True,
         eval_strategy="steps",                                     
-        eval_steps=1000,
+        eval_steps=30,
         report_to="wandb"         
     )                                                                                                                                                                                                                                        
                                                                                                                                                                                                                      

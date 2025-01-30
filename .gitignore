@@ -12,3 +12,4 @@ temp/
 #ignore
 !notebooks/finetuning_eval.ipynb
 !notebooks/visualize_masks.ipynb
+!notebooks/finetune_benchmark.ipynb

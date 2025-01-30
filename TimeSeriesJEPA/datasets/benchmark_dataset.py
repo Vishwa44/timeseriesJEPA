@@ -6,12 +6,12 @@ import pandas as pd
 from torch.utils.data import Dataset
 from sklearn.preprocessing import StandardScaler
 
-class BenchmarkEvalDataset(Dataset):
-    def __init__(self, csv_path, context_length: int, prediction_length: int, flag: str):
+class BenchmarkDataset(Dataset):
+    def __init__(self, csv_path, context_length: int, prediction_length: int, flag: str, returndict: bool):
         super().__init__()
         self.context_length = context_length
         self.prediction_length = prediction_length
-        self.flag = flag
+        self.returndict = returndict
 
         df = pd.read_csv(csv_path)
         
@@ -42,7 +42,7 @@ class BenchmarkEvalDataset(Dataset):
         scaler.fit(train_data)
         scaled_data = scaler.transform(df_values)
         
-        if self.flag == 'test':
+        if flag == 'test':
             scaled_data = scaled_data[border1s[2]:border2s[2]]
         else:
             scaled_data = scaled_data[border1s[0]:border2s[0]]
@@ -74,9 +74,11 @@ class BenchmarkEvalDataset(Dataset):
         # Split into context and prediction windows
         context_window = window[:self.context_length]
         prediction_window = window[self.context_length:]
-        if self.flag == 'pretraining':
-            return context_window.astype(np.float32)
-        return {
+        if self.returndict:
+            return {
             'past_values': context_window.astype(np.float32),  # Shape: [context_length, num_features]
             'future_values': prediction_window.astype(np.float32),  # Shape: [prediction_length, num_features]
         }
+        else:
+            return context_window.astype(np.float32)
+        

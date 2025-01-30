@@ -73,11 +73,9 @@ class TimeSeriesMaskCollator(object):
         return mask, mask_complement
 
     def __call__(self, batch):
-        seq_x, label, inputmask = zip(*batch)
-        seq_x = torch.from_numpy(np.stack(seq_x)).float().unsqueeze(2)
-        label = torch.from_numpy(np.stack(label)).float().unsqueeze(2)
-        inputmask = torch.from_numpy(np.stack(inputmask)).float().unsqueeze(2)
-
+        seq_x = np.stack(batch, axis=0)
+        seq_x = torch.from_numpy(seq_x).float()
+        
         B, _, N = seq_x.shape
 
         seed = self.step()
@@ -129,4 +127,4 @@ class TimeSeriesMaskCollator(object):
             ])
             for n_mask in range(self.nenc)
         ]
-        return seq_x, label, inputmask, collated_masks_enc, collated_masks_pred
+        return seq_x, collated_masks_enc, collated_masks_pred

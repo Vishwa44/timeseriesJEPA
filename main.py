@@ -12,6 +12,7 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoints', type=str, default="./checkpoints/", help='path to save model')
 
     # data loader
+    parser.add_argument('--dataset', type=str, default="Time300B", help='training dataset')
     parser.add_argument('--data_path', type=str, default='./Time_300B', help='data file')
     parser.add_argument('--nenc', type=int, default=1, help='number of enc masks')
     parser.add_argument('--npred', type=int, default=3, help='number of pred masks')
@@ -47,7 +48,7 @@ if __name__ == '__main__':
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=4, help='data loader num workers')
-    parser.add_argument('--pretrain_epochs', type=int, default=5, help='train epochs')
+    parser.add_argument('--pretrain_epochs', type=int, default=10, help='train epochs')
     parser.add_argument('--max_steps', type=int, default=3000, help='max training steps')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size of train input data')
     parser.add_argument('--train_scale', type=float, default=1.0, help='scale the target encoder')
@@ -64,7 +65,8 @@ if __name__ == '__main__':
     print(args)
 
 
-    setting = 'PatchTST_Time300B_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_clean_data'.format(
+    setting = 'PatchTST_{}_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_clean_data'.format(
+        args.dataset,
         args.seq_len,
         args.d_model,
         args.n_heads,
