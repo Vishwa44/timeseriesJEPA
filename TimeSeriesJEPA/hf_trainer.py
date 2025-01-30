@@ -139,7 +139,7 @@ class TimeSeriesJEPATrainer(Trainer):
 
             def loss_fn(z, h):
                 # loss = F.smooth_l1_loss(z, h)
-                loss = F.mse_loss(z, h)
+                loss = F.smooth_l1_loss(z, h)
                 return loss
 
             # Step 1. Forward

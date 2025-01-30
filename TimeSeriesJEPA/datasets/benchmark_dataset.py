@@ -6,18 +6,18 @@ import pandas as pd
 from torch.utils.data import Dataset
 from sklearn.preprocessing import StandardScaler
 
-# from time_moe.utils.log_util import log_in_local_rank_0
-
-
 class BenchmarkEvalDataset(Dataset):
-
-    def __init__(self, csv_path, context_length: int, prediction_length: int):
+    def __init__(self, csv_path, context_length: int, prediction_length: int, flag: str):
         super().__init__()
         self.context_length = context_length
         self.prediction_length = prediction_length
+        self.flag = flag
 
         df = pd.read_csv(csv_path)
-
+        
+        # Get all columns except date
+        cols = df.columns[1:]
+        
         base_name = os.path.basename(csv_path).lower()
         if 'etth' in base_name:
             border1s = [0, 12 * 30 * 24 - context_length, 12 * 30 * 24 + 4 * 30 * 24 - context_length]
@@ -32,51 +32,51 @@ class BenchmarkEvalDataset(Dataset):
             border1s = [0, num_train - context_length, len(df) - num_test - context_length]
             border2s = [num_train, num_train + num_vali, len(df)]
 
-        start_dt = df.iloc[border1s[2]]['date']
-        eval_start_dt = df.iloc[border1s[2] + context_length]['date']
-        end_dt = df.iloc[border2s[2] - 1]['date']
-        log_in_local_rank_0(f'>>> Split test data from {start_dt} to {end_dt}, '
-                            f'and evaluation start date is: {eval_start_dt}')
 
-        cols = df.columns[1:]
         df_values = df[cols].values
-
+        print("Total data size: ", df_values.shape)
         train_data = df_values[border1s[0]:border2s[0]]
-        test_data = df_values[border1s[2]:border2s[2]]
 
-        # scaling
+        # Scale the entire dataset at once
         scaler = StandardScaler()
         scaler.fit(train_data)
-        scaled_test_data = scaler.transform(test_data)
-
-        # assignment
-        self.hf_dataset = scaled_test_data.transpose(1, 0)
-        self.num_sequences = len(self.hf_dataset)
-        # 1 for the label
+        scaled_data = scaler.transform(df_values)
+        
+        if self.flag == 'test':
+            scaled_data = scaled_data[border1s[2]:border2s[2]]
+        else:
+            scaled_data = scaled_data[border1s[0]:border2s[0]]
+            
+        # Store the scaled data
+        self.data = scaled_data
         self.window_length = self.context_length + self.prediction_length
 
-        self.sub_seq_indexes = []
-        for seq_idx, seq in enumerate(self.hf_dataset):
-            n_points = len(seq)
-            if n_points < self.window_length:
-                continue
-            for offset_idx in range(self.window_length, n_points):
-                self.sub_seq_indexes.append((seq_idx, offset_idx))
+        # Create indices for all possible windows
+        self.indices = []
+        n_samples = len(self.data)
+        for i in range(n_samples - self.window_length + 1):
+            self.indices.append(i)
 
     def __len__(self):
-        return len(self.sub_seq_indexes)
+        return len(self.indices)
 
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
 
     def __getitem__(self, idx):
-        seq_i, offset_i = self.sub_seq_indexes[idx]
-        seq = self.hf_dataset[seq_i]
-
-        window_seq = np.array(seq[offset_i - self.window_length: offset_i], dtype=np.float32)
-
+        start_idx = self.indices[idx]
+        end_idx = start_idx + self.window_length
+        
+        # Extract the window for all features
+        window = self.data[start_idx:end_idx]
+        
+        # Split into context and prediction windows
+        context_window = window[:self.context_length]
+        prediction_window = window[self.context_length:]
+        if self.flag == 'pretraining':
+            return context_window.astype(np.float32)
         return {
-            'inputs': np.array(window_seq[: self.context_length], dtype=np.float32),
-            'labels': np.array(window_seq[-self.prediction_length:], dtype=np.float32),
+            'past_values': context_window.astype(np.float32),  # Shape: [context_length, num_features]
+            'future_values': prediction_window.astype(np.float32),  # Shape: [prediction_length, num_features]
         }
