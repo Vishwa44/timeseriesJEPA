@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, default="Time300B", help='training dataset')
     parser.add_argument('--data_path', type=str, default='./Time_300B', help='data file')
     parser.add_argument('--nenc', type=int, default=1, help='number of enc masks')
-    parser.add_argument('--npred', type=int, default=3, help='number of pred masks')
+    parser.add_argument('--npred', type=int, default=4, help='number of pred masks')
     parser.add_argument('--min_keep', type=int, default=5, help='min_keep')
     parser.add_argument('--allow_overlap', type=bool, default=False, help='allow overlap')
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--pre_norm', type=bool, default=True, help='pre norm')
     parser.add_argument('--channel_attention', type=bool, default=False, help='channel attention')
     parser.add_argument('--d_model', type=int, default=64, help='dimension of model')
-    parser.add_argument('--n_heads', type=int, default=16, help='num of heads')
+    parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
     parser.add_argument('--num_hidden_layers', type=int, default=3, help='num of encoder layers')
     parser.add_argument('--ffn_dim', type=int, default=64, help='dimension of fcn')
     parser.add_argument('--norm_type', type=str, default='batchnorm',help='Normalization type')
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     print(args)
 
 
-    setting = 'PatchTST_{}_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_clean_data'.format(
+    setting = 'PatchTST_{}_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_data_nenc{}_npred{}_clean_data'.format(
         args.dataset,
         args.seq_len,
         args.d_model,
@@ -78,7 +78,9 @@ if __name__ == '__main__':
         args.pred_ffn_dim,
         args.batch_size,
         args.learning_rate,
-        args.pretrain_epochs
+        args.pretrain_epochs,
+        args.nenc,
+        args.npred
         )
 
     print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))

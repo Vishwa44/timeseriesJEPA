@@ -324,10 +324,10 @@ def pretrain(args, setting, device):
         save_strategy="epoch",
         # max_steps=args.max_steps,
         logging_strategy="steps",
-        logging_steps=10,
+        logging_steps=100,
         do_eval = True,
         eval_strategy="steps",                                     
-        eval_steps=30,
+        eval_steps=1000,
         report_to="wandb"         
     )                                                                                                                                                                                                                                        
                                                                                                                                                                                                                      
