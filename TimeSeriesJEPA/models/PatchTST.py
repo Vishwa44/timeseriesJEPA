@@ -763,6 +763,7 @@ class PatchTSTEncoder(PatchTSTPreTrainedModel):
     def __init__(self, config: PatchTSTConfig, num_patches: int):
         super().__init__(config)
         self.gradient_checkpointing = False
+        self.compress_proj = config.compress_proj
 
         # Input embedding: projection of feature vectors onto a d-dim vector space
         self.embedder = PatchTSTEmbedding(config)
@@ -772,6 +773,10 @@ class PatchTSTEncoder(PatchTSTPreTrainedModel):
         self.layers = nn.ModuleList([PatchTSTEncoderLayer(config) for i in range(config.num_hidden_layers)])
         
         self.norm = nn.LayerNorm(config.d_model)
+
+        if self.compress_proj:
+            self.compress_layer = nn.Linear(config.d_model, config.compress_proj_size, bias=config.bias)
+            self.compress_norm = nn.LayerNorm(config.compress_proj_size)
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -820,6 +825,9 @@ class PatchTSTEncoder(PatchTSTPreTrainedModel):
                 all_attentions = all_attentions + (layer_outputs[1],)
         # return past_values, hidden_states
         hidden_state = self.norm(hidden_state)
+        if self.compress_proj:
+            hidden_state = self.compress_layer(hidden_state)
+            hidden_state = self.compress_norm(hidden_state)
         return BaseModelOutput(last_hidden_state=hidden_state, hidden_states=encoder_states, attentions=all_attentions)
 
 

@@ -9,6 +9,7 @@ __pycache__
 results/
 wandb/
 temp/
+compressproj_exp/
 #ignore
 !notebooks/finetuning_eval.ipynb
 !notebooks/visualize_masks.ipynb

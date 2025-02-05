@@ -9,7 +9,7 @@ from TimeSeriesJEPA.hf_trainer import pretrain
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # misc
-    parser.add_argument('--checkpoints', type=str, default="./checkpoints/", help='path to save model')
+    parser.add_argument('--checkpoints', type=str, default="./results/", help='path to save model')
 
     # data loader
     parser.add_argument('--dataset', type=str, default="Time300B", help='training dataset')
@@ -35,6 +35,8 @@ if __name__ == '__main__':
     parser.add_argument('--ffn_dim', type=int, default=64, help='dimension of fcn')
     parser.add_argument('--norm_type', type=str, default='batchnorm',help='Normalization type')
     parser.add_argument('--dropout', type=float, default=0.05, help='dropout')
+    parser.add_argument('--compress_proj', type=bool, default=False, help='adds a compressive projection layer at the end of the model')
+    parser.add_argument('--compress_proj_size', type=int, default=32, help='size of compressive projection layer')
 
     # Predictor
     parser.add_argument('--enc_dim', type=int, default=64, help='projection dimension of model')
@@ -54,6 +56,10 @@ if __name__ == '__main__':
     parser.add_argument('--train_scale', type=float, default=1.0, help='scale the target encoder')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
 
+    #logging
+    parser.add_argument('--logging_steps', type=int, default=100, help='Print train loss after how many steps')
+    parser.add_argument('--eval_steps', type=int, default=1000, help='Eval steps')
+
     args = parser.parse_args()
 
     args.ema = [0.996, 1.0]
@@ -63,9 +69,8 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  
     print('Args in experiment:')
     print(args)
-
-
-    setting = 'PatchTST_{}_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_data_nenc{}_npred{}_clean_data'.format(
+    
+    setting = 'PatchTST_{}_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_data_nenc{}_npred{}'.format(
         args.dataset,
         args.seq_len,
         args.d_model,
@@ -82,6 +87,9 @@ if __name__ == '__main__':
         args.nenc,
         args.npred
         )
+    
+    if args.compress_proj:
+        setting += "_compress_"+str(args.compress_proj_size)
 
     print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
 

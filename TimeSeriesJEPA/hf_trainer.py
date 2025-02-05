@@ -20,9 +20,11 @@ TRAINING_ARGS_NAME = "training_args.bin"
 PREDICTOR_PATH_NAME = "Predictor"
 TARGET_ENC_NAME = "Target_encoder"
 
-class PatchTSTPredConfig(PatchTSTConfig):
-    def __init__(self, enc_dim: int = 64,**kwargs):
+class PatchTSTJEPAConfig(PatchTSTConfig):
+    def __init__(self, enc_dim: int = 64, compress_proj: bool = False, compress_proj_size: int = 32,**kwargs):
         self.enc_dim = enc_dim
+        self.compress_proj = compress_proj
+        self.compress_proj_size = compress_proj_size
         super().__init__(**kwargs)
 
 def _get_data(args):
@@ -268,7 +270,7 @@ def pretrain(args, setting, device):
         
     train_data, val_data = _get_data(args)
 
-    enc_config = PatchTSTConfig(
+    enc_config = PatchTSTJEPAConfig(
                         num_input_channels=1,
                         context_length=args.seq_len,
                         patch_length=args.patch_len,
@@ -285,7 +287,7 @@ def pretrain(args, setting, device):
                         norm_type=args.norm_type,
                         positional_encoding_type = "sincos"
                         )
-    pred_config = PatchTSTPredConfig(
+    pred_config = PatchTSTJEPAConfig(
                         enc_dim=args.enc_dim,
                         num_input_channels=1,
                         context_length=args.seq_len,
@@ -301,7 +303,9 @@ def pretrain(args, setting, device):
                         scaling="std",
                         pre_norm=args.pred_pre_norm,
                         norm_type=args.pred_norm_type,
-                        positional_encoding_type = "sincos"
+                        positional_encoding_type = "sincos",
+                        compress_proj=args.compress_proj,
+                        compress_proj_size=args.compress_proj_size
                         )
     
     encoder = PatchTSTModelJEPA(enc_config).float().to(device)
@@ -317,17 +321,17 @@ def pretrain(args, setting, device):
 
     
     training_args = TrainingArguments(
-        output_dir=os.path.join("results", setting),
+        output_dir=os.path.join(args.checkpoints, setting),
         num_train_epochs=args.pretrain_epochs,
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         save_strategy="epoch",
         # max_steps=args.max_steps,
         logging_strategy="steps",
-        logging_steps=100,
+        logging_steps=args.logging_steps,
         do_eval = True,
         eval_strategy="steps",                                     
-        eval_steps=1000,
+        eval_steps=args.eval_steps,
         report_to="wandb"         
     )                                                                                                                                                                                                                                        
                                                                                                                                                                                                                      
