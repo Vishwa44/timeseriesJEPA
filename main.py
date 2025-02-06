@@ -9,7 +9,7 @@ from TimeSeriesJEPA.hf_trainer import pretrain
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # misc
-    parser.add_argument('--checkpoints', type=str, default="./results/", help='path to save model')
+    parser.add_argument('--pretraining_checkpoints', type=str, default="./results/", help='path to save model')
 
     # data loader
     parser.add_argument('--dataset', type=str, default="Time300B", help='training dataset')

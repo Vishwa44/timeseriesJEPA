@@ -10,12 +10,13 @@ class TimeMoEWindowDataset:
     """
     A dataset that generates windows of time series data.
     """
-    def __init__(self, dataset: TimeSeriesDataset, context_length: int, prediction_length: int = 0, **kwrags):
+    def __init__(self, dataset: TimeSeriesDataset, context_length: int, prediction_length: int = 0, pretraining: bool=True, **kwrags):
         self.dataset = dataset
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.window_size = context_length + prediction_length
         self.window_size_plus_one = self.window_size + 1
+        self.pretraining = pretraining
 
         num_seqs = len(self.dataset)
         iterator = range(num_seqs)
@@ -50,8 +51,13 @@ class TimeMoEWindowDataset:
         if n_pad > 0:
             seq = np.pad(seq, (0, n_pad), 'constant', constant_values=0)
             loss_mask = np.pad(loss_mask, (0, n_pad), 'constant', constant_values=0)
-
-        return np.expand_dims(seq[:-1], 1)
+        if self.pretraining:
+            return np.expand_dims(seq[:self.context_length], 1)
+        return {
+            'past_values':  np.expand_dims(seq[:self.context_length], 1),  # Shape: [context_length, num_features]
+            'future_values': np.expand_dims(seq[self.context_length:-1], 1),  # Shape: [prediction_length, num_features]
+        } 
+        
 
 
 

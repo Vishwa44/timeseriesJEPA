@@ -2,7 +2,7 @@ from TimeSeriesJEPA.datasets.time_moe_dataset import TimeMoEDataset
 from TimeSeriesJEPA.datasets.benchmark_dataset import BenchmarkDataset
 from TimeSeriesJEPA.datasets.time_moe_window_dataset import TimeMoEWindowDataset
 from TimeSeriesJEPA.datasets.mask_collator import TimeSeriesMaskCollator
-from TimeSeriesJEPA.models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA
+from TimeSeriesJEPA.models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA, PatchTSTForPrediction
 from TimeSeriesJEPA.datasets.mask_utils import apply_masks
 from transformers import PatchTSTConfig, Trainer, TrainingArguments
 import numpy as np
@@ -27,12 +27,12 @@ class PatchTSTJEPAConfig(PatchTSTConfig):
         self.compress_proj_size = compress_proj_size
         super().__init__(**kwargs)
 
-def _get_data(args):
+def _get_data(args, pretraining=True):
     if args.dataset=='Time300B':
         trainds = TimeMoEDataset(args.data_path, val=False)
-        trainwindowds = TimeMoEWindowDataset(trainds, context_length=args.seq_len, prediction_length=0)
+        trainwindowds = TimeMoEWindowDataset(trainds, context_length=args.seq_len, prediction_length=args.pred_len, pretraining=pretraining)
         valds = TimeMoEDataset(args.data_path, val=True)
-        valwindowds = TimeMoEWindowDataset(valds, context_length=args.seq_len, prediction_length=0)
+        valwindowds = TimeMoEWindowDataset(valds, context_length=args.seq_len, prediction_length=args.pred_len, pretraining=pretraining)
     else:
         trainwindowds = BenchmarkDataset(csv_path=args.data_path, context_length=args.seq_len, prediction_length=0, flag='train', returndict=False)
         valwindowds = BenchmarkDataset(csv_path=args.data_path, context_length=args.seq_len, prediction_length=0, flag='test', returndict=False)
@@ -321,7 +321,7 @@ def pretrain(args, setting, device):
 
     
     training_args = TrainingArguments(
-        output_dir=os.path.join(args.checkpoints, setting),
+        output_dir=os.path.join(args.pretraining_checkpoints, setting),
         num_train_epochs=args.pretrain_epochs,
         per_device_train_batch_size=args.batch_size,
         learning_rate=args.learning_rate,
@@ -346,6 +346,53 @@ def pretrain(args, setting, device):
         data_collator=mask_collator,
         momentum_start=args.ema[0],
         momentum_end=args.ema[1],
+    )
+
+    # Train the model
+    trainer.train()
+
+def finetune(args, setting, device):
+    train_data, val_data = _get_data(args, pretraining=False)
+
+    encoder_model = PatchTSTModelJEPA.from_pretrained(args.model_path)
+    config = PatchTSTJEPAConfig(
+                        num_input_channels=1,
+                        context_length=args.seq_len,
+                        patch_length=args.patch_len,
+                        patch_stride=args.stride,
+                        prediction_length=args.pred_len,
+                        d_model=args.d_model,
+                        loss="huber",
+                        head_dropout=args.head_dropout,
+                        )
+    model = PatchTSTForPrediction(config=config, encoder_model=encoder_model).float().to(device)
+
+    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print("model parameters: ", params)
+
+    training_args = TrainingArguments(
+        output_dir=os.path.join(args.finetuning_checkpoints, setting),
+        num_train_epochs=args.finetune_epochs,
+        per_device_train_batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        save_strategy="epoch",
+        # max_steps=args.max_steps,
+        logging_strategy="steps",
+        label_names=["future_values"],
+        logging_steps=args.logging_steps,
+        do_eval = True,
+        eval_strategy="steps",                                     
+        eval_steps=args.eval_steps,
+        report_to="wandb"         
+    )                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                     
+    # Initialize the trainer                                                            
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_data,
+        eval_dataset=val_data,
     )
 
     # Train the model

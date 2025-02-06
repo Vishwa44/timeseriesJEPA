@@ -763,7 +763,11 @@ class PatchTSTEncoder(PatchTSTPreTrainedModel):
     def __init__(self, config: PatchTSTConfig, num_patches: int):
         super().__init__(config)
         self.gradient_checkpointing = False
-        self.compress_proj = config.compress_proj
+        
+        try:
+            self.compress_proj = config.compress_proj
+        except AttributeError:
+            self.compress_proj = False
 
         # Input embedding: projection of feature vectors onto a d-dim vector space
         self.embedder = PatchTSTEmbedding(config)
@@ -1107,8 +1111,11 @@ class PatchTSTForPrediction(PatchTSTPreTrainedModel):
             param.requires_grad = False
 
         if config.loss == "mse":
+            self.loss = nn.MSELoss(reduction="mean")
             self.distribution_output = None
-
+        elif config.loss == "huber":
+            self.loss = nn.HuberLoss(reduction="mean", delta=2.0)
+            self.distribution_output = None
         self.head = PatchTSTPredictionHead(
             config, self.model.patchifier.num_patches, distribution_output=self.distribution_output
         )
@@ -1144,8 +1151,7 @@ class PatchTSTForPrediction(PatchTSTPreTrainedModel):
             y_hat_out = y_hat * model_output[2] + model_output[1]
 
         if future_values is not None:
-                loss = nn.MSELoss(reduction="mean")
-                loss_val = loss(y_hat_out, future_values)
+                loss_val = self.loss(y_hat_out, future_values)
 
         loc = model_output[1]
         scale = model_output[2]
