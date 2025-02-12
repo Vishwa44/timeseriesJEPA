@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument('--finetune_epochs', type=int, default=10, help='train epochs')
     parser.add_argument('--max_steps', type=int, default=3000, help='max training steps')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size of train input data')
-    parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
+    parser.add_argument('--learning_rate', type=float, default=1e-9, help='optimizer learning rate')
 
     #logging
     parser.add_argument('--logging_steps', type=int, default=100, help='Print train loss after how many steps')

@@ -779,6 +779,7 @@ class PatchTSTEncoder(PatchTSTPreTrainedModel):
         self.norm = nn.LayerNorm(config.d_model)
 
         if self.compress_proj:
+            print("Adding compress layer")
             self.compress_layer = nn.Linear(config.d_model, config.compress_proj_size, bias=config.bias)
             self.compress_norm = nn.LayerNorm(config.compress_proj_size)
         # Initialize weights and apply final processing

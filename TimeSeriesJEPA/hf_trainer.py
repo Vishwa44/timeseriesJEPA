@@ -48,6 +48,7 @@ class TimeSeriesJEPATrainer(Trainer):
         args=None,
         train_dataset=None,
         eval_dataset=None,
+        reg_coeff=0.0001,
         **kwargs
     ):
         # Initialize target encoder if not provided
@@ -69,7 +70,8 @@ class TimeSeriesJEPATrainer(Trainer):
         self.momentum_end = kwargs.pop('momentum_end', 1.0)
         self.train_scale = kwargs.pop('train_scale', 1.0)
         self.current_momentum = self.momentum_start
-        
+        self.reg_coeff = reg_coeff
+
         # Initialize parent Trainer
         super().__init__(
             model=encoder,
@@ -122,6 +124,16 @@ class TimeSeriesJEPATrainer(Trainer):
             self._created_lr_scheduler = True
         return self.lr_scheduler
 
+    def reg_fn(self, z: torch.Tensor) -> torch.Tensor:
+        """
+        Compute feature variance regularization.
+        Args:
+            z: predicted features [B, N, S, E]
+        Returns:
+            Feature standard deviation across patches
+        """
+        return torch.sqrt(z.var(dim=2) + 0.0001)  # Add small epsilon for numerical stability
+        # z: [batc x nvar x num patches x embd]
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         """
         Custom loss computation implementing JEPA training logic
@@ -144,16 +156,22 @@ class TimeSeriesJEPATrainer(Trainer):
                 return z[0]
 
             def loss_fn(z, h):
-                # loss = F.smooth_l1_loss(z, h)
-                loss = F.smooth_l1_loss(z, h)
-                return loss
+                loss_jepa = F.smooth_l1_loss(z, h)
+                 # Feature variance regularization
+                pstd_z = self.reg_fn(z)
+                loss_reg = torch.mean(F.relu(1. - pstd_z))
+                
+                # Combine losses
+                total_loss = loss_jepa + self.reg_coeff * loss_reg
+                
+                return total_loss, loss_jepa, loss_reg
 
             # Step 1. Forward
             h = forward_target()
             z = forward_context()
-            loss = loss_fn(z, h)
+            total_loss, loss_jepa, loss_reg = loss_fn(z, h)
 
-            return loss
+            return total_loss
         loss = train_step()    
         return (loss, None) if return_outputs else loss
 
@@ -285,10 +303,12 @@ def pretrain(args, setting, device):
                         scaling="std",
                         pre_norm=args.pre_norm,
                         norm_type=args.norm_type,
-                        positional_encoding_type = "sincos"
+                        positional_encoding_type = "sincos",
+                        compress_proj=args.compress_proj,
+                        compress_proj_size=args.compress_proj_size
                         )
     pred_config = PatchTSTJEPAConfig(
-                        enc_dim=args.enc_dim,
+                        enc_dim=args.enc_dim if args.compress_proj is False else args.compress_proj_size,
                         num_input_channels=1,
                         context_length=args.seq_len,
                         patch_length=args.patch_len,
@@ -304,8 +324,7 @@ def pretrain(args, setting, device):
                         pre_norm=args.pred_pre_norm,
                         norm_type=args.pred_norm_type,
                         positional_encoding_type = "sincos",
-                        compress_proj=args.compress_proj,
-                        compress_proj_size=args.compress_proj_size
+                        
                         )
     
     encoder = PatchTSTModelJEPA(enc_config).float().to(device)
@@ -346,6 +365,7 @@ def pretrain(args, setting, device):
         data_collator=mask_collator,
         momentum_start=args.ema[0],
         momentum_end=args.ema[1],
+        reg_coeff=args.reg_coeff
     )
 
     # Train the model

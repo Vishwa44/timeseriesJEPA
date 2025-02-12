@@ -10,6 +10,7 @@ results/
 wandb/
 temp/
 compressproj_exp/
+finetuning_results/
 #ignore
 !notebooks/finetuning_eval.ipynb
 !notebooks/visualize_masks.ipynb

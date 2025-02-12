@@ -49,6 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--pred_norm_type', type=str, default='batchnorm',help='Normalization type')
 
     # optimization
+    parser.add_argument('--reg_coeff', type=int, default=0.0001, help='regularization coff')
     parser.add_argument('--num_workers', type=int, default=4, help='data loader num workers')
     parser.add_argument('--pretrain_epochs', type=int, default=10, help='train epochs')
     parser.add_argument('--max_steps', type=int, default=3000, help='max training steps')
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     print('Args in experiment:')
     print(args)
     
-    setting = 'PatchTST_{}_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_data_nenc{}_npred{}'.format(
+    setting = 'PatchTST_{}_sl{}_enc_dm{}_nh{}_el{}_fd{}_pred_dm{}_nh{}_el{}_fd{}_bs{}_lr{}_pe{}_data_nenc{}_npred{}_w_regularization'.format(
         args.dataset,
         args.seq_len,
         args.d_model,
@@ -90,7 +91,6 @@ if __name__ == '__main__':
     
     if args.compress_proj:
         setting += "_compress_"+str(args.compress_proj_size)
-
     print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
 
     pretrain(args, setting, device)
