@@ -128,3 +128,115 @@ class TimeSeriesMaskCollator(object):
             for n_mask in range(self.nenc)
         ]
         return seq_x, collated_masks_enc, collated_masks_pred
+
+
+class TimeSeriesMaskCollator_no_target_masks(object):
+    def __init__(
+        self,
+        seq_len,
+        patch_size=16,
+        stride=8,
+        enc_mask_scale=(0.2, 0.8),
+        nenc=1,
+        min_keep=4,
+    ):
+        super(TimeSeriesMaskCollator_no_target_masks, self).__init__()
+        self.seq_len = seq_len
+        self.patch_size = patch_size
+        self.num_patches = ((seq_len - patch_size) // stride) + 1
+        self.enc_mask_scale = enc_mask_scale
+        self.nenc = nenc
+        self.min_keep = min_keep
+        self._itr_counter = Value('i', -1)  # collator is shared across worker processes
+
+    def step(self):
+        i = self._itr_counter
+        with i.get_lock():
+            i.value += 1
+            v = i.value
+        return v
+
+    def _sample_mask_size(self, scale):
+        min_s, max_s = scale
+        mask_scale = min_s + torch.rand(1).item() * (max_s - min_s)
+        mask_size = int(self.num_patches * mask_scale)
+        return mask_size
+
+    def _sample_block_mask(self, b_size):
+        mask_length = b_size
+        valid_mask = False
+        
+        while not valid_mask:
+            start = torch.randint(0, self.num_patches - mask_length + 1, (1,))
+            mask = torch.zeros(self.num_patches, dtype=torch.int32)
+            mask[start:start+mask_length] = 1
+            mask = torch.nonzero(mask).squeeze()
+            valid_mask = len(mask) > self.min_keep
+
+        # Create complement mask (target mask)
+        mask_complement = torch.ones(self.num_patches, dtype=torch.int32)
+        mask_complement[start:start+mask_length] = 0
+        mask_complement = torch.nonzero(mask_complement).squeeze()
+
+        return mask, mask_complement
+
+    def __call__(self, batch):
+        seq_x = np.stack(batch, axis=0)
+        seq_x = torch.from_numpy(seq_x).float()
+        
+        B, _, N = seq_x.shape
+
+        seed = self.step()
+        g = torch.Generator()
+        g.manual_seed(seed)
+        
+        enc_mask_size = self._sample_mask_size(self.enc_mask_scale)
+
+        collated_masks_enc = []
+        collated_masks_pred = []
+        min_keep_enc = self.num_patches
+        min_keep_pred = self.num_patches
+        
+        for b in range(B):
+            collated_masks_enc_n = []
+            collated_masks_pred_n = []
+            
+            for n in range(N):
+                masks_e = []
+                masks_p = []
+                
+                for _ in range(self.nenc):
+                    mask_enc, mask_pred = self._sample_block_mask(enc_mask_size)
+                    masks_e.append(mask_enc)
+                    masks_p.append(mask_pred)
+                    min_keep_enc = min(min_keep_enc, len(mask_enc))
+                    min_keep_pred = min(min_keep_pred, len(mask_pred))
+                    
+                collated_masks_enc_n.append(masks_e)
+                collated_masks_pred_n.append(masks_p)
+                
+            collated_masks_enc.append(collated_masks_enc_n)
+            collated_masks_pred.append(collated_masks_pred_n)
+
+        # Truncate all masks to minimum length for consistent batching
+        collated_masks_enc = [[[c[:min_keep_enc] for c in cm] for cm in cm_list] for cm_list in collated_masks_enc]
+        collated_masks_pred = [[[c[:min_keep_pred] for c in cm] for cm in cm_list] for cm_list in collated_masks_pred]
+
+        # Stack masks into tensor
+        collated_masks_enc = [
+            torch.stack([
+                torch.stack([sample[n_var][n_mask] for n_var in range(N)])
+                for sample in collated_masks_enc
+            ])
+            for n_mask in range(self.nenc)
+        ]
+        
+        collated_masks_pred = [
+            torch.stack([
+                torch.stack([sample[n_var][n_mask] for n_var in range(N)])
+                for sample in collated_masks_pred
+            ])
+            for n_mask in range(self.nenc)
+        ]
+
+        return seq_x, collated_masks_enc, collated_masks_pred

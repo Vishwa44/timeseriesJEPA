@@ -1,7 +1,7 @@
 from TimeSeriesJEPA.datasets.time_moe_dataset import TimeMoEDataset
 from TimeSeriesJEPA.datasets.benchmark_dataset import BenchmarkDataset
 from TimeSeriesJEPA.datasets.time_moe_window_dataset import TimeMoEWindowDataset
-from TimeSeriesJEPA.datasets.mask_collator import TimeSeriesMaskCollator
+from TimeSeriesJEPA.datasets.mask_collator import TimeSeriesMaskCollator, TimeSeriesMaskCollator_no_target_masks
 from TimeSeriesJEPA.models.PatchTST import PatchTSTModelJEPA, PatchTSTPredictorModelJEPA, PatchTSTForPrediction
 from TimeSeriesJEPA.datasets.mask_utils import apply_masks
 from transformers import PatchTSTConfig, Trainer, TrainingArguments
@@ -144,10 +144,10 @@ class TimeSeriesJEPATrainer(Trainer):
             def forward_target():
                 with torch.no_grad():
                     h = self.target_encoder(seq_x)
-                    h = F.layer_norm(h[0], (h[0].size(-1),))  # normalize over feature-dim
-                    B = len(h[0])
+                    # h = F.layer_norm(h[0], (h[0].size(-1),))  # normalize over feature-dim
+                    # B = len(h[0])
                     # -- create targets (masked regions of h)
-                    h = self._apply_masks(h, pred_masks)
+                    h = self._apply_masks(h[0], pred_masks)
                     return h
 
             def forward_context():
@@ -273,19 +273,49 @@ class TimeSeriesJEPATrainer(Trainer):
         # Good practice: save your training arguments together with the trained model
         torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
 
+    def compute_embedding_statistics(self, eval_dataloader=None):
+        """
+        Compute statistics of embeddings across the validation dataset
+        Returns:
+            dict: Dictionary containing embedding statistics
+        """
+        if eval_dataloader is None:
+            eval_dataloader = self.get_eval_dataloader()
+        
+        self.model.eval()
+        all_embeddings = []
+        
+        with torch.no_grad():
+            for batch in eval_dataloader:
+                batch = self._prepare_inputs(batch)
+                seq_x = batch['past_values']
+                
+                embeddings = self.model(seq_x)
+                all_embeddings.append(embeddings[0])
+        
+        # Concatenate all embeddings
+        all_embeddings = torch.cat(all_embeddings, dim=0)  # [total_samples, nvars, num_patches, embedding_dim]
+        return all_embeddings
 
 def pretrain(args, setting, device):
-    mask_collator = TimeSeriesMaskCollator(
-            seq_len=args.seq_len,
-            patch_size=args.patch_len,
-            stride=args.stride,
-            pred_mask_scale=args.pred_mask_scale,
-            enc_mask_scale=args.enc_mask_scale,
-            nenc=args.nenc,
-            npred=args.npred,
-            allow_overlap=args.allow_overlap,
-            min_keep=args.min_keep)
-        
+    # mask_collator = TimeSeriesMaskCollator(
+    #         seq_len=args.seq_len,
+    #         patch_size=args.patch_len,
+    #         stride=args.stride,
+    #         pred_mask_scale=args.pred_mask_scale,
+    #         enc_mask_scale=args.enc_mask_scale,
+    #         nenc=args.nenc,
+    #         npred=args.npred,
+    #         allow_overlap=args.allow_overlap,
+    #         min_keep=args.min_keep)
+    mask_collator = TimeSeriesMaskCollator_no_target_masks(
+        seq_len=args.seq_len,
+        patch_size=args.patch_len,
+        stride=args.stride,
+        enc_mask_scale=args.enc_mask_scale,
+        nenc=args.nenc,
+        min_keep=args.min_keep
+    )
     train_data, val_data = _get_data(args)
 
     enc_config = PatchTSTJEPAConfig(
